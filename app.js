@@ -82,18 +82,19 @@
 
   $("#login-form").addEventListener("submit", async e => {
     e.preventDefault();
+    primeSong();
     const msg = $("#login-msg"), card = $(".login-card");
     const pass = $("#password").value.trim();
     const fail = t => {
       msg.textContent = t;
       card.classList.remove("shake"); void card.offsetWidth; card.classList.add("shake");
     };
-    if (!chosen) return fail("Avval kimligingni tanla 🙂");
+    if (!chosen) { stopSong(); return fail("Avval kimligingni tanla 🙂"); }
     const btn = $("#login-btn");
     btn.disabled = true; btn.textContent = "Ochilmoqda… 💗";
     let raw;
     try { raw = await unlock(chosen, pass.toLowerCase()); await useKey(raw); }
-    catch { btn.disabled = false; btn.textContent = "Yuragimni och 💌"; return fail("Bu yurak kaliti emas… yana urinib ko'r 💔"); }
+    catch { stopSong(); btn.disabled = false; btn.textContent = "Yuragimni och 💌"; return fail("Bu yurak kaliti emas… yana urinib ko'r 💔"); }
     btn.disabled = false; btn.textContent = "Yuragimni och 💌";
     store.set(chosen + "|" + b64e(raw));
     const r = $(".login-card").getBoundingClientRect();
@@ -276,10 +277,11 @@
     $("#burger").addEventListener("click", () => $("#links").classList.toggle("open"));
     document.querySelectorAll("#links a").forEach(a => a.addEventListener("click", () => $("#links").classList.remove("open")));
 
-    // musiqa (YouTube)
-    if (SAYT.musiqaYoutube) {
+    // musiqa
+    if (KEYS.music || KEYS.yt) {
       $("#music").hidden = false;
       $("#music").addEventListener("click", () => {
+        if (KEYS.music) { const a = $("#song"); a.paused ? playSong() : stopSong(true); return; }
         const pl = $("#player");
         if (pl.hidden || pl.classList.contains("min")) music(true);
         else pl.classList.add("min");
@@ -287,17 +289,38 @@
     }
   }
 
-  // Musiqa: ko'rinadigan kichik YouTube pleer (iPhone yashirin pleerni chaldirmaydi)
+  /* ---------- musiqa ---------- */
+  // Fayl bo'lsa (musiqa.mp3) — login tugmasi bosilganda darhol chaladi (iPhone ham ruxsat beradi).
+  function primeSong() {
+    if (!KEYS.music) return;
+    const a = $("#song");
+    if (!a.src) a.src = KEYS.music;
+    a.play().then(() => $("#music").classList.add("on")).catch(() => {});
+  }
+  function playSong() { primeSong(); }
+  function stopSong(keep) {
+    const a = $("#song"); a.pause(); if (!keep) a.currentTime = 0;
+    $("#music").classList.remove("on");
+  }
+  // Avval kirgan bo'lsa: birinchi teginishda chaladi
+  function songOnFirstTouch() {
+    if (!KEYS.music) return;
+    const go = () => { document.removeEventListener("pointerdown", go); if ($("#song").paused) primeSong(); };
+    document.addEventListener("pointerdown", go);
+  }
+
+  // Fayl bo'lmasa — YouTube pleer (15-soniyadan)
   function music(on) {
+    if (KEYS.music) { on ? primeSong() : stopSong(); return; }
     const pl = $("#player"), fr = $("#pl-frame"), btn = $("#music");
-    if (!SAYT.musiqaYoutube) return;
+    if (!KEYS.yt) return;
     if (!on) { fr.textContent = ""; pl.hidden = true; pl.classList.remove("min"); btn.classList.remove("on"); return; }
     if (!fr.firstChild) {
-      const id = encodeURIComponent(SAYT.musiqaYoutube);
+      const id = encodeURIComponent(KEYS.yt);
       const f = el("iframe");
       f.allow = "autoplay; encrypted-media";
       f.title = "Bizning qo'shig'imiz";
-      f.src = `https://www.youtube.com/embed/${id}?autoplay=1&playsinline=1&loop=1&playlist=${id}&rel=0`;
+      f.src = `https://www.youtube.com/embed/${id}?autoplay=1&playsinline=1&start=${KEYS.ytStart || 0}&rel=0`;
       fr.appendChild(f);
     }
     pl.hidden = false; pl.classList.remove("min"); btn.classList.add("on");
@@ -378,6 +401,6 @@
     if (!saved) return;
     const [user, raw] = saved.split("|");
     if (!KEYS.names[user] || !raw) return store.del();
-    try { await useKey(b64d(raw)); enter(user); } catch { store.del(); }
+    try { await useKey(b64d(raw)); enter(user); songOnFirstTouch(); } catch { store.del(); }
   })();
 })();
