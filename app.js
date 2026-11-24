@@ -529,23 +529,33 @@
   }
   const REEL = /https?:\/\/(?:www\.)?instagram\.com\/(?:[\w.]+\/)?(reels?|p|tv)\/([\w-]+)[^\s]*/i;
 
-  // Reels kartochkasi: asosiy tugma Instagram ilovasida ochadi, xohlasa shu yerda ham ko'rish mumkin
+  // Reels saytning ichida o'ynaydi (Instagram embed). Katta ekranda ochish ham mumkin.
   function reelCard(kind, code) {
     const url = `https://www.instagram.com/${kind}/${encodeURIComponent(code)}/`;
     const w = el("div", "reel-link");
-    const a = el("a", "rl-main"); a.href = url;
-    a.appendChild(el("span", "rl-ico", "▶"));
-    const t = el("span", "rl-t"); t.appendChild(el("b", null, "Reels")); t.appendChild(el("small", null, "Instagram'da ko'rish ↗"));
-    a.appendChild(t);
-    a.addEventListener("click", e => e.stopPropagation());
-    const inl = el("button", "rl-inline", "yoki shu yerda ochish"); inl.type = "button";
-    inl.addEventListener("click", e => {
-      e.stopPropagation();
-      const f = el("iframe"); f.title = "Instagram"; f.allow = "autoplay; encrypted-media; fullscreen";
-      f.src = url + "embed/"; inl.replaceWith(f);
-    });
-    w.appendChild(a); w.appendChild(inl);
+    const f = el("iframe"); f.title = "Instagram Reels"; f.loading = "lazy";
+    f.allow = "autoplay; encrypted-media; fullscreen; picture-in-picture";
+    f.src = url + "embed/";
+    w.appendChild(f);
+    const bar = el("div", "rl-bar");
+    const big = el("button", "rl-big", "⤢ Katta ekranda ko'rish"); big.type = "button";
+    big.addEventListener("click", e => { e.stopPropagation(); openViewer(url + "embed/"); });
+    const ig = el("a", "rl-ig", "Instagram ↗"); ig.href = url; ig.target = "_blank"; ig.rel = "noopener";
+    ig.addEventListener("click", e => e.stopPropagation());
+    bar.appendChild(big); bar.appendChild(ig); w.appendChild(bar);
     return w;
+  }
+  function openViewer(src) {
+    let v = $("#rv");
+    if (!v) {
+      v = el("div", "rv"); v.id = "rv";
+      const x = el("button", "rv-x", "✕"); x.type = "button";
+      x.onclick = () => { v.hidden = true; v.querySelector("iframe").src = "about:blank"; };
+      const f = el("iframe"); f.allow = "autoplay; encrypted-media; fullscreen; picture-in-picture"; f.title = "Instagram Reels";
+      v.appendChild(f); v.appendChild(x); document.body.appendChild(v);
+    }
+    v.querySelector("iframe").src = src;
+    v.hidden = false;
   }
   function bubble(id, m) {
     const mine = m.from === ME;
