@@ -833,18 +833,39 @@
   /* ---------- 🕊️ Gemini AI ---------- */
   // Ikki xil kalit: AI Studio ("AIza...") va Vertex AI express ("AQ...."). Ishlagan yo'l eslab qolinadi.
   const GEM_EPS = [
-    { base: "https://generativelanguage.googleapis.com/v1beta/models/", models: ["gemini-flash-latest", "gemini-2.5-flash", "gemini-2.0-flash"] },
-    { base: "https://aiplatform.googleapis.com/v1/publishers/google/models/", models: ["gemini-2.5-flash", "gemini-2.0-flash-001"] },
+    { base: "https://generativelanguage.googleapis.com/v1beta/models/", models: ["gemini-3.8-flash", "gemini-flash-latest", "gemini-2.5-flash"] },
+    { base: "https://aiplatform.googleapis.com/v1/publishers/google/models/", models: ["gemini-3.8-flash", "gemini-2.5-flash"] },
   ];
-  let gemOk = null;
+  let gemOk = null, gemList = null;
+  // Google'dagi mavjud modellar ro'yxatidan eng yangi "flash" modelni tanlaydi
+  async function bestModel() {
+    if (gemList !== null) return gemList;
+    gemList = "";
+    try {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?pageSize=200&key=${encodeURIComponent(CFG.gemini)}`);
+      if (!r.ok) return "";
+      const d = await r.json();
+      const ok = (d.models || []).filter(m => (m.supportedGenerationMethods || []).includes("generateContent"))
+        .map(m => m.name.replace("models/", ""))
+        .filter(n => /^gemini-[\d.]+-flash$/.test(n) || /^gemini-[\d.]+-flash-\d+$/.test(n));
+      const ver = n => parseFloat((n.match(/gemini-([\d.]+)/) || [])[1] || 0);
+      ok.sort((a, b) => ver(b) - ver(a) || a.length - b.length);
+      gemList = ok[0] || "";
+    } catch {}
+    return gemList;
+  }
   async function gemini(system, contents, json) {
     if (!CFG.gemini) throw new Error("nokey");
     const body = JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents,
       generationConfig: json ? { temperature: 0.2, responseMimeType: "application/json" } : { temperature: 0.8 } });
-    const eps = CFG.gemini.startsWith("AQ.") ? [GEM_EPS[1], GEM_EPS[0]] : GEM_EPS;
+    const eps = GEM_EPS;
     const tries = gemOk ? [gemOk] : eps.flatMap(ep => ep.models.map(m => ep.base + m));
+    if (!gemOk) { const best = await bestModel(); if (best) tries.unshift(GEM_EPS[0].base + best); }
     let lastErr = "";
-    for (const url of tries) {
+    const seen = new Set();
+    for (let i = 0; i < tries.length; i++) {
+      const url = tries[i];
+      if (seen.has(url)) continue; seen.add(url);
       let r;
       try { r = await fetch(`${url}:generateContent?key=${encodeURIComponent(CFG.gemini)}`, { method: "POST", headers: { "Content-Type": "application/json" }, body }); }
       catch (e) { lastErr = "tarmoq xatosi"; continue; }
@@ -854,7 +875,10 @@
         return ((d.candidates && d.candidates[0] && d.candidates[0].content && d.candidates[0].content.parts) || []).map(x => x.text || "").join("").trim();
       }
       lastErr = (d.error && d.error.message) || String(r.status);
-      if ([400, 401, 403, 404].includes(r.status)) continue;
+      // Google "o'rniga models/xxx ni ishlat" desa — o'shani sinab ko'ramiz
+      const sug = lastErr.match(/models\/(gemini-[\w.-]+)/g);
+      if (sug) sug.map(x => x.replace("models/", "")).filter(m => !url.endsWith("/" + m)).forEach(m => tries.splice(i + 1, 0, GEM_EPS[0].base + m));
+      if ([400, 401, 403, 404, 410].includes(r.status)) continue;
       throw new Error(lastErr);
     }
     gemOk = null;
