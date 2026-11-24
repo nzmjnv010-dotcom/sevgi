@@ -71,7 +71,7 @@
     SAYT = JSON.parse(new TextDecoder().decode(await decryptUrl("m/d.bin")));
   }
   async function decryptUrl(url) {
-    const r = await fetch(url);
+    const r = await fetch(url + "?v=" + (KEYS.v || 1));
     if (!r.ok) throw new Error(r.status);
     const buf = await r.arrayBuffer();
     return crypto.subtle.decrypt({ name: "AES-GCM", iv: buf.slice(0, 12) }, CK, buf.slice(12));
@@ -199,17 +199,22 @@
         $("#videos").appendChild(box);
         return;
       }
-      const ph = el("div", "v-ph");
-      ph.appendChild(el("b", null, "🎬"));
-      ph.appendChild(el("span", null, "Video ochilmoqda…"));
+      // Video faqat bosilganda yuklanadi (rasmlar tez ochilishi uchun)
+      const ph = el("button", "v-ph");
+      ph.type = "button";
+      ph.appendChild(el("b", null, "▶"));
+      ph.appendChild(el("span", null, "Videoni ko'rish"));
       box.appendChild(ph);
-      lazy(box, async () => {
+      ph.addEventListener("click", async () => {
+        if (ph.disabled) return;
+        ph.disabled = true; ph.lastChild.textContent = "Ochilmoqda… 💗";
         try {
           const vid = el("video");
-          vid.controls = true; vid.preload = "metadata"; vid.playsInline = true;
+          vid.controls = true; vid.playsInline = true;
           vid.src = await blobUrl(v.fayl, "video/mp4");
           ph.replaceWith(vid);
-        } catch { ph.lastChild.textContent = "Video ochilmadi 😔"; }
+          vid.play().catch(() => {});
+        } catch { ph.disabled = false; ph.lastChild.textContent = "Ochilmadi 😔 Qayta bosing"; }
       });
       box.appendChild(el("p", null, v.izoh));
       $("#videos").appendChild(box);
@@ -331,19 +336,25 @@
   function photoCard(p, i, list) {
     const fig = el("figure", "g-item reveal");
     const img = el("img");
-    img.alt = p.izoh || "Bizning rasmimiz";
-    img.loading = "lazy";
-    img.onload = () => { p.ok = true; };
+    img.alt = "";
+    const wait = el("div", "ph loading");
+    wait.appendChild(el("b", null, "💗"));
+    wait.appendChild(el("span", null, "Rasm ochilmoqda…"));
+    fig.appendChild(wait);
+    img.onload = () => { p.ok = true; img.alt = p.izoh || "Bizning rasmimiz"; wait.remove(); };
     img.onerror = () => {
       const ph = el("div", "ph");
       ph.appendChild(el("b", null, ["💑", "🌹", "📸", "💐", "🥰", "✨"][i % 6]));
-      ph.appendChild(el("span", null, "Bu yerga rasmimiz qo'yiladi"));
-      img.replaceWith(ph);
+      ph.appendChild(el("span", null, "Rasm ochilmadi — sahifani yangilang"));
+      wait.remove(); img.replaceWith(ph);
     };
     fig.appendChild(img);
     lazy(fig, async () => {
-      try { p.url = await blobUrl(p.fayl, "image/jpeg"); img.src = p.url; }
-      catch { img.onerror(); }
+      for (let t = 0; t < 3; t++) {
+        try { p.url = await blobUrl(p.fayl, "image/jpeg"); img.src = p.url; return; }
+        catch { await new Promise(r => setTimeout(r, 1500)); }
+      }
+      img.onerror();
     });
     if (p.izoh) fig.appendChild(el("figcaption", null, p.izoh));
     fig.addEventListener("click", () => {

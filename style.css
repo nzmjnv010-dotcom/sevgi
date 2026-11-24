@@ -281,3 +281,6 @@ button{font-family:inherit;cursor:pointer}
 .v-item video{aspect-ratio:auto;max-height:75vh;object-fit:contain;background:#2a0f1a}
 .videos{align-items:start}
 .player{width:min(240px,calc(100vw - 96px))}
+.ph.loading b{animation:beat 1.2s infinite}
+button.v-ph{width:100%;border:0;font:inherit;cursor:pointer}
+button.v-ph b{font-size:40px;width:74px;height:74px;border-radius:50%;background:rgba(255,255,255,.2);display:grid;place-items:center;padding-left:6px}
