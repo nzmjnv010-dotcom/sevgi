@@ -768,22 +768,34 @@
   }
 
   /* ---------- 🕊️ Gemini AI ---------- */
-  const GEM_MODELS = ["gemini-flash-latest", "gemini-2.5-flash", "gemini-2.0-flash"];
+  // Ikki xil kalit: AI Studio ("AIza...") va Vertex AI express ("AQ...."). Ishlagan yo'l eslab qolinadi.
+  const GEM_EPS = [
+    { base: "https://generativelanguage.googleapis.com/v1beta/models/", models: ["gemini-flash-latest", "gemini-2.5-flash", "gemini-2.0-flash"] },
+    { base: "https://aiplatform.googleapis.com/v1/publishers/google/models/", models: ["gemini-2.5-flash", "gemini-2.0-flash-001"] },
+  ];
+  let gemOk = null;
   async function gemini(system, contents, json) {
     if (!CFG.gemini) throw new Error("nokey");
-    let last = "";
-    for (const mdl of GEM_MODELS) {
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${mdl}:generateContent?key=${encodeURIComponent(CFG.gemini)}`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents,
-          generationConfig: json ? { temperature: 0.2, responseMimeType: "application/json" } : { temperature: 0.8 } }),
-      });
+    const body = JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents,
+      generationConfig: json ? { temperature: 0.2, responseMimeType: "application/json" } : { temperature: 0.8 } });
+    const eps = CFG.gemini.startsWith("AQ.") ? [GEM_EPS[1], GEM_EPS[0]] : GEM_EPS;
+    const tries = gemOk ? [gemOk] : eps.flatMap(ep => ep.models.map(m => ep.base + m));
+    let lastErr = "";
+    for (const url of tries) {
+      let r;
+      try { r = await fetch(`${url}:generateContent?key=${encodeURIComponent(CFG.gemini)}`, { method: "POST", headers: { "Content-Type": "application/json" }, body }); }
+      catch (e) { lastErr = "tarmoq xatosi"; continue; }
       const d = await r.json().catch(() => ({}));
-      if (r.status === 404) { last = "404"; continue; }
-      if (!r.ok) throw new Error((d.error && d.error.message) || String(r.status));
-      return ((d.candidates && d.candidates[0] && d.candidates[0].content && d.candidates[0].content.parts) || []).map(x => x.text || "").join("").trim();
+      if (r.ok) {
+        gemOk = url;
+        return ((d.candidates && d.candidates[0] && d.candidates[0].content && d.candidates[0].content.parts) || []).map(x => x.text || "").join("").trim();
+      }
+      lastErr = (d.error && d.error.message) || String(r.status);
+      if ([400, 401, 403, 404].includes(r.status)) continue;
+      throw new Error(lastErr);
     }
-    throw new Error("Model topilmadi (" + last + ")");
+    gemOk = null;
+    throw new Error(lastErr || "Gemini javob bermadi");
   }
   const MEDIATOR = `Sen — Rahmatulloh va Bonu degan sevishganlar juftligining iliq, betaraf yarashtiruvchi maslahatchisisan.
 Faqat o'zbek tilida (lotin yozuvida), sodda va mehribon tilda yoz.
@@ -814,7 +826,7 @@ Qoidalar:
           <li>Shu yerga qo'yib, <b>Saqlash</b> ni bos</li>
         </ol>
         <p class="ai-note">Kalit parolingiz bilan shifrlanib saqlanadi — faqat siz ikkovingiz ishlata olasiz. Bittangiz bir marta kiritsangiz yetadi.</p>
-        <div class="ai-key"><input id="ai-key" type="password" placeholder="AIza..." autocomplete="off"><button id="ai-key-save" type="button">Saqlash</button></div>
+        <div class="ai-key"><input id="ai-key" type="password" placeholder="AIza... yoki AQ...." autocomplete="off"><button id="ai-key-save" type="button">Saqlash</button></div>
       </div>
       <form id="ai-form" class="tg-form ai-form" autocomplete="off">
         <label class="ai-ctx"><input type="checkbox" id="ai-ctx" checked> 💬 So'nggi 40 ta xabarimizni ham o'qisin</label>
@@ -861,7 +873,7 @@ Qoidalar:
   }
   async function saveKey() {
     const k = $("#ai-key").value.trim();
-    if (!/^AIza[\w-]{20,}$/.test(k)) { alert("Kalit \"AIza...\" bilan boshlanishi kerak. Qaytadan nusxalab ko'r."); return; }
+    if (!/^(AIza[\w-]{20,}|AQ\.[\w.-]{20,})$/.test(k)) { alert("Kalit \"AIza...\" yoki \"AQ....\" bilan boshlanishi kerak. Qaytadan nusxalab ko'r."); return; }
     const btn = $("#ai-key-save"); btn.disabled = true; btn.textContent = "Tekshirilmoqda…";
     const old = CFG.gemini; CFG.gemini = k;
     try {
