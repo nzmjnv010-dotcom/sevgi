@@ -654,6 +654,7 @@
     }
     happySection();
     if (SAYT.gemini && !CFG.gemini) CFG.gemini = SAYT.gemini;
+    reelsSetup();
     $("#tg-name").textContent = KEYS.names[OTHER()].ism;
     $("#tg-ava").textContent = OTHER() === "bonu" ? "👸" : "🤴";
     es = new EventSource(`${DB}/chat.json?orderBy="$key"&limitToLast=500`);
@@ -680,6 +681,67 @@
     });
     setInterval(updateStatus, 20000);
   }
+  /* ---------- 🎬 Reels ---------- */
+  function reelsSetup() {
+    if (!$("#tg-reel")) {
+      const b = el("button", "tg-reelb", "🎬"); b.id = "tg-reel"; b.type = "button"; b.title = "Nusxalangan Reels'ni yuborish";
+      b.onclick = pasteReel; $("#tg-form").prepend(b);
+    }
+    if (!$("#tg-reels")) {
+      const b = el("button", "tg-aib", "🎞️"); b.id = "tg-reels"; b.type = "button"; b.title = "Reels'larimiz";
+      b.onclick = openReels; $(".tg-head").insertBefore(b, $("#tg-ai"));
+    }
+    if (!$("#nav-reels")) {
+      const a = el("a", null, "Reels 🎬"); a.id = "nav-reels"; a.href = "#";
+      a.onclick = e => { e.preventDefault(); $("#links").classList.remove("open"); openReels(); };
+      $("#links").insertBefore(a, $("#logout"));
+    }
+  }
+  async function pasteReel() {
+    let t = "";
+    try { t = await navigator.clipboard.readText(); } catch {}
+    const r = (t || "").match(REEL);
+    if (r) { $("#tg-input").value = r[0]; grow(); $("#tg-form").requestSubmit(); return; }
+    alert("Avval Instagram'da Reels ostidagi ↗ (ulashish) → \"Ssilkani nusxalash\" ni bos, keyin shu 🎬 tugmani bos.\n\nYoki havolani xabar maydoniga qo'yib yubor.");
+  }
+  function openReels() {
+    if (!$("#reels")) {
+      document.body.insertAdjacentHTML("beforeend", `
+      <div id="reels" class="tg reels-panel" hidden>
+        <header class="tg-head">
+          <button id="reels-back" class="tg-back" type="button" aria-label="Orqaga">‹</button>
+          <div class="tg-ava">🎬</div>
+          <div class="tg-title"><b>Reels'larimiz</b><small id="reels-count"></small></div>
+        </header>
+        <div id="reels-list" class="reels-list"></div>
+      </div>`);
+      $("#reels-back").onclick = () => { $("#reels").hidden = true; $("#reels-list").textContent = ""; };
+    }
+    const list = [...msgs.entries()].filter(([, m]) => REEL.test(m.text || "")).sort((a, b) => b[1].t - a[1].t);
+    const box = $("#reels-list"); box.textContent = "";
+    $("#reels-count").textContent = list.length ? `${list.length} ta — bir-biringizga yuborganlaringiz` : "hali yo'q";
+    if (!list.length) box.appendChild(el("p", "reels-empty", "Hali Reels yo'q. Instagram'da Reels → ↗ → \"Ssilkani nusxalash\", keyin chatda 🎬 tugmasini bos — shu yerda yig'iladi 💗"));
+    for (const [id, m] of list) {
+      const r = m.text.match(REEL);
+      const kind = r[1].toLowerCase().startsWith("reel") ? "reel" : r[1].toLowerCase();
+      const c = el("div", "reel-card");
+      const top = el("div", "reel-top");
+      top.appendChild(el("b", null, (m.from === ME ? "Sen" : (KEYS.names[m.from] || {}).ism) + " yubordi"));
+      top.appendChild(el("small", null, dayLabel(m.t) + " " + hm(m.t)));
+      c.appendChild(top);
+      const txt = m.text.replace(r[0], "").trim();
+      if (txt) c.appendChild(el("p", "reel-cap", txt));
+      const f = el("iframe"); f.loading = "lazy"; f.title = "Instagram Reels";
+      f.allow = "autoplay; encrypted-media; fullscreen";
+      f.src = `https://www.instagram.com/${kind}/${encodeURIComponent(r[2])}/embed/`;
+      c.appendChild(f);
+      const go = el("a", "reel-open", "Instagram'da ochish ↗"); go.href = `https://www.instagram.com/${kind}/${encodeURIComponent(r[2])}/`; go.target = "_blank"; go.rel = "noopener";
+      c.appendChild(go);
+      box.appendChild(c);
+    }
+    $("#reels").hidden = false;
+  }
+
   function happySection() {
     if ($("#baxtli")) return;
     const x = el("section", "section"); x.id = "baxtli";
