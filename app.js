@@ -502,6 +502,7 @@
   if (!$("#song")) $("#app").insertAdjacentHTML("beforeend", '<audio id="song" loop preload="none"></audio>');
   const DB = KEYS.chatDb ? KEYS.chatDb.replace(/\/+$/, "") : null;
   const msgs = new Map(), els = new Map();
+  let CFG = {};
   let es = null, es2 = null, seen = {}, editing = null, sheetId = null, chatOpen = false, beat = null, toBottom = true, lastSeenPut = 0;
   const OTHER = () => (ME === "bonu" ? "rahmatulloh" : "bonu");
   const p2 = n => String(n).padStart(2, "0");
@@ -530,8 +531,9 @@
 
   function bubble(id, m) {
     const mine = m.from === ME;
-    const b = el("div", "tg-msg " + (mine ? "out" : "in"));
+    const b = el("div", "tg-msg " + (m.from === "ai" ? "ai" : mine ? "out" : "in"));
     b.dataset.id = id;
+    if (m.from === "ai") b.appendChild(el("span", "tg-ai-l", "🕊️ Yarashtiruvchi maslahati"));
     if (m.edits && m.edits.length) {
       const q = el("div", "tg-prev");
       q.appendChild(el("span", "tg-prev-l", "✏️ Avvalgi xabar" + (m.edits.length > 1 ? "lar" : "") + ":"));
@@ -551,14 +553,14 @@
     const txt = r ? m.text.replace(r[0], "").trim() : m.text;
     const body = el("div", "tg-text");
     if (txt) body.appendChild(document.createTextNode(txt));
-    const meta = el("span", "tg-meta", (m.edits && m.edits.length ? "tahrirlangan " : "") + hm(m.t));
+    const meta = el("span", "tg-meta", (m.star ? "⭐ " : "") + (m.edits && m.edits.length ? "tahrirlangan " : "") + hm(m.t));
     if (mine) meta.appendChild(el("span", "tick", "✓"));
     body.appendChild(meta);
     b.appendChild(body);
     b.addEventListener("click", () => openSheet(id));
     return b;
   }
-  function sig(m) { return (m.text || "") + "|" + (m.edits ? m.edits.length : 0); }
+  function sig(m) { return (m.text || "") + "|" + (m.edits ? m.edits.length : 0) + "|" + (m.star ? 1 : 0); }
   function nearBottom() { const x = $("#tg-list"); return x.scrollHeight - x.scrollTop - x.clientHeight < 140; }
   function scrollEnd() { const x = $("#tg-list"); x.scrollTop = x.scrollHeight; }
 
@@ -598,6 +600,7 @@
     if (toBottom || initial) { scrollEnd(); toBottom = false; }
     updateBadge();
     if (chatOpen) markSeen();
+    happySoon();
   }
   function updateTicks() {
     const s = seen[OTHER()] || 0;
@@ -636,11 +639,20 @@
 
   async function addRec(id, rec) {
     if (!rec) { msgs.delete(id); const b = els.get(id); if (b) { b.remove(); els.delete(id); } return null; }
-    try { const m = await decJson(rec); msgs.set(id, m); return m; } catch { return null; }
+    try {
+      const m = await decJson(rec);
+      if (m.type === "cfg") { if (!CFG._t || m.t > CFG._t) CFG = { ...(m.cfg || {}), _t: m.t }; aiRefresh(); return null; }
+      msgs.set(id, m); return m;
+    } catch { return null; }
   }
   function chatStart() {
     if (!DB || es) return;
     $("#chat-fab").hidden = false; $("#nav-chat").hidden = false;
+    if (!$("#tg-ai")) {
+      const b = el("button", "tg-aib", "🕊️"); b.id = "tg-ai"; b.type = "button"; b.title = "Yarashtiruvchi (AI)";
+      b.onclick = openAI; $(".tg-head").appendChild(b);
+    }
+    happySection();
     $("#tg-name").textContent = KEYS.names[OTHER()].ism;
     $("#tg-ava").textContent = OTHER() === "bonu" ? "👸" : "🤴";
     es = new EventSource(`${DB}/chat.json?orderBy="$key"&limitToLast=500`);
@@ -666,6 +678,23 @@
       updateTicks(); updateStatus();
     });
     setInterval(updateStatus, 20000);
+  }
+  function happySection() {
+    if ($("#baxtli")) return;
+    const x = el("section", "section"); x.id = "baxtli";
+    const h = el("h2", "section-title"); h.appendChild(el("span", "script", "Baxtli")); h.appendChild(document.createTextNode(" onlarimiz ⭐"));
+    x.appendChild(h);
+    x.appendChild(el("p", "section-sub", "Chatimizdagi eng shirin lahzalar — bosilsa, chatdagi o'sha joy ochiladi"));
+    const l = el("div", "happy-list"); l.id = "happy-list"; x.appendChild(l);
+    const t = el("div", "happy-tools");
+    const b1 = el("button", "btn ghost", "✨ Gemini topib bersin"); b1.id = "happy-ai"; b1.type = "button"; b1.onclick = findHappy;
+    const b2 = el("button", "btn ghost", "🕊️ Janjal bo'lsa — maslahat"); b2.type = "button"; b2.onclick = openAI;
+    t.appendChild(b1); t.appendChild(b2); x.appendChild(t);
+    const sug = el("div", "happy-sug"); sug.id = "happy-sug"; x.appendChild(sug);
+    $("#app").insertBefore(x, $("#soz") || $("#savol"));
+    const a = el("a", null, "Baxtli onlar ⭐"); a.href = "#baxtli"; a.onclick = () => $("#links").classList.remove("open");
+    $("#links").insertBefore(a, $("#logout"));
+    renderHappy();
   }
   function chatStop() {
     if (es) es.close(); if (es2) es2.close(); es = es2 = null;
@@ -708,11 +737,201 @@
   $("#nav-chat").addEventListener("click", e => { e.preventDefault(); openChat(); });
   $("#tg-back").addEventListener("click", () => closeChat(false));
 
+  /* ---------- ⭐ Baxtli onlar ---------- */
+  async function putMsg(id, m) {
+    const r = await fetch(`${DB}/chat/${id}.json`, { method: "PUT", body: JSON.stringify(await encJson(m)) });
+    if (!r.ok) throw new Error(r.status);
+  }
+  async function toggleStar(id) {
+    const m = msgs.get(id); if (!m) return;
+    const nm = { ...m }; if (m.star) delete nm.star; else nm.star = { by: ME, t: Date.now() };
+    try { await putMsg(id, nm); } catch { alert("Saqlanmadi, internetni tekshir 🙏"); }
+  }
+  let happyT = null;
+  function happySoon() { clearTimeout(happyT); happyT = setTimeout(renderHappy, 150); }
+  const plain = m => (m.text || "").replace(REEL, "🎬 Reels").trim();
+  function renderHappy() {
+    const box = $("#happy-list"); if (!box) return;
+    box.textContent = "";
+    const list = [...msgs.entries()].filter(([, m]) => m.star).sort((a, b) => a[1].t - b[1].t);
+    if (!list.length) {
+      box.appendChild(el("p", "happy-empty", "Hali bu yer bo'sh. Chatdagi istalgan shirin xabarni bosib, \"⭐ Baxtli onlarga qo'shish\" ni tanla — u shu yerda abadiy qoladi."));
+      return;
+    }
+    for (const [id, m] of list) {
+      const c = el("button", "happy-card reveal in" + (m.from === "rahmatulloh" ? " r" : " b")); c.type = "button";
+      c.appendChild(el("span", "happy-q", "“" + plain(m) + "”"));
+      c.appendChild(el("span", "happy-who", (m.from === "ai" ? "🕊️ Maslahatchi" : (KEYS.names[m.from] || {}).ism || "") + " · " + dayLabel(m.t) + " " + hm(m.t)));
+      c.onclick = () => { openChat(); const b = els.get(id); if (b) { b.scrollIntoView({ block: "center" }); b.classList.remove("flash"); void b.offsetWidth; b.classList.add("flash"); } };
+      box.appendChild(c);
+    }
+  }
+
+  /* ---------- 🕊️ Gemini AI ---------- */
+  const GEM_MODELS = ["gemini-flash-latest", "gemini-2.5-flash", "gemini-2.0-flash"];
+  async function gemini(system, contents, json) {
+    if (!CFG.gemini) throw new Error("nokey");
+    let last = "";
+    for (const mdl of GEM_MODELS) {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${mdl}:generateContent?key=${encodeURIComponent(CFG.gemini)}`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents,
+          generationConfig: json ? { temperature: 0.2, responseMimeType: "application/json" } : { temperature: 0.8 } }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (r.status === 404) { last = "404"; continue; }
+      if (!r.ok) throw new Error((d.error && d.error.message) || String(r.status));
+      return ((d.candidates && d.candidates[0] && d.candidates[0].content && d.candidates[0].content.parts) || []).map(x => x.text || "").join("").trim();
+    }
+    throw new Error("Model topilmadi (" + last + ")");
+  }
+  const MEDIATOR = `Sen — Rahmatulloh va Bonu degan sevishganlar juftligining iliq, betaraf yarashtiruvchi maslahatchisisan.
+Faqat o'zbek tilida (lotin yozuvida), sodda va mehribon tilda yoz.
+Qoidalar:
+- Hech kimning tarafini olma. Ikkalasining his-tuyg'ularini ham tan ol.
+- Asosiy tushunmovchilikni qisqa va aniq ko'rsat.
+- Har biri uchun 1–2 ta aniq qadam va aytishi mumkin bo'lgan samimiy gap namunasini ber.
+- Hech qachon manipulyatsiya, ayyorlik, jim turib jazolash, rashk uyg'otish kabi usullarni maslahat berma — faqat ochiq, hurmatli va halol muloqotni tavsiya qil.
+- Agar zo'ravonlik, tahdid, o'ziga yoki boshqaga zarar yetkazish belgilari bo'lsa — yumshoq, lekin aniq qilib ishonchli kattalar yoki mutaxassisdan yordam so'rashni maslahat ber.
+- Javob qisqa bo'lsin: 150 so'zdan oshmasin. Oxirida bitta iliq, umid beruvchi jumla yoz.`;
+  let aiHist = [];
+  function aiDom() {
+    if ($("#ai")) return;
+    document.body.insertAdjacentHTML("beforeend", `
+    <div id="ai" class="tg ai-panel" hidden>
+      <header class="tg-head">
+        <button id="ai-back" class="tg-back" type="button" aria-label="Orqaga">‹</button>
+        <div class="tg-ava">🕊️</div>
+        <div class="tg-title"><b>Yarashtiruvchi</b><small>Gemini AI · betaraf maslahatchi</small></div>
+      </header>
+      <div id="ai-log" class="tg-list"></div>
+      <div id="ai-setup" class="ai-setup" hidden>
+        <b>🔑 Bir martalik sozlash</b>
+        <p>Maslahatchi ishlashi uchun bepul Gemini kaliti kerak:</p>
+        <ol>
+          <li><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> ni och (Gmail bilan kir)</li>
+          <li><b>"Create API key"</b> ni bos va kalitni nusxala</li>
+          <li>Shu yerga qo'yib, <b>Saqlash</b> ni bos</li>
+        </ol>
+        <p class="ai-note">Kalit parolingiz bilan shifrlanib saqlanadi — faqat siz ikkovingiz ishlata olasiz. Bittangiz bir marta kiritsangiz yetadi.</p>
+        <div class="ai-key"><input id="ai-key" type="password" placeholder="AIza..." autocomplete="off"><button id="ai-key-save" type="button">Saqlash</button></div>
+      </div>
+      <form id="ai-form" class="tg-form ai-form" autocomplete="off">
+        <label class="ai-ctx"><input type="checkbox" id="ai-ctx" checked> 💬 So'nggi 40 ta xabarimizni ham o'qisin</label>
+        <div class="ai-row">
+          <textarea id="ai-input" rows="2" maxlength="3000" placeholder="Nima bo'ldi? Ochiq yoz..."></textarea>
+          <button id="ai-send" type="submit" aria-label="So'rash">➤</button>
+        </div>
+      </form>
+    </div>`);
+    $("#ai-back").onclick = () => { $("#ai").hidden = true; };
+    $("#ai-key-save").onclick = saveKey;
+    $("#ai-form").addEventListener("submit", askAI);
+    $("#ai-input").addEventListener("input", () => { const i = $("#ai-input"); i.style.height = "auto"; i.style.height = Math.min(i.scrollHeight, 140) + "px"; });
+  }
+  function aiRefresh() {
+    if (!$("#ai")) return;
+    $("#ai-setup").hidden = !!CFG.gemini;
+    $("#ai-form").hidden = !CFG.gemini;
+  }
+  function aiBubble(role, text, share) {
+    const b = el("div", "tg-msg " + (role === "user" ? "out" : "in ai-ans"));
+    b.appendChild(el("div", "tg-text", text));
+    if (share) {
+      const s = el("button", "ai-share", "💌 Chatga ulashish"); s.type = "button";
+      s.onclick = async () => {
+        s.disabled = true;
+        try {
+          const r = await fetch(`${DB}/chat.json`, { method: "POST", body: JSON.stringify(await encJson({ from: "ai", by: ME, text, t: Date.now() })) });
+          if (!r.ok) throw 0; s.textContent = "✓ Chatga yuborildi";
+        } catch { s.disabled = false; alert("Yuborilmadi 🙏"); }
+      };
+      b.appendChild(s);
+    }
+    $("#ai-log").appendChild(b);
+    $("#ai-log").scrollTop = $("#ai-log").scrollHeight;
+    return b;
+  }
+  function openAI() {
+    aiDom(); aiRefresh();
+    $("#ai").hidden = false;
+    if (!$("#ai-log").children.length) {
+      aiBubble("model", `Salom, ${KEYS.names[ME].ism} 🤍 Men betaraf maslahatchiman. Nima bo'lganini ochiq yoz — kim nima dedi, seni nima xafa qildi. Ikkalangizning ham his-tuyg'ularingizni hurmat qilgan holda, qanday yarashish mumkinligini aytib beraman.`);
+    }
+  }
+  async function saveKey() {
+    const k = $("#ai-key").value.trim();
+    if (!/^AIza[\w-]{20,}$/.test(k)) { alert("Kalit \"AIza...\" bilan boshlanishi kerak. Qaytadan nusxalab ko'r."); return; }
+    const btn = $("#ai-key-save"); btn.disabled = true; btn.textContent = "Tekshirilmoqda…";
+    const old = CFG.gemini; CFG.gemini = k;
+    try {
+      await gemini("Faqat 'ok' deb javob ber.", [{ role: "user", parts: [{ text: "test" }] }]);
+      const r = await fetch(`${DB}/chat.json`, { method: "POST", body: JSON.stringify(await encJson({ type: "cfg", cfg: { gemini: k }, from: ME, t: Date.now() })) });
+      if (!r.ok) throw new Error("Saqlanmadi");
+      $("#ai-key").value = ""; aiRefresh();
+      aiBubble("model", "✅ Tayyor! Endi nima bo'lganini yozishing mumkin.");
+    } catch (e) { CFG.gemini = old; alert("Kalit ishlamadi: " + e.message); }
+    btn.disabled = false; btn.textContent = "Saqlash";
+  }
+  function recentContext(n) {
+    return [...msgs.values()].filter(m => m.from !== "ai").sort((a, b) => a.t - b.t).slice(-n)
+      .map(m => `${(KEYS.names[m.from] || {}).ism || "?"}: ${plain(m)}`).join("\n");
+  }
+  async function askAI(e) {
+    e.preventDefault();
+    const inp = $("#ai-input"), q = inp.value.trim();
+    if (!q) return;
+    inp.value = ""; inp.style.height = "auto";
+    aiBubble("user", q);
+    let text = `Men ${KEYS.names[ME].ism}man. ${q}`;
+    if (!aiHist.length && $("#ai-ctx").checked && msgs.size)
+      text += `\n\nBizning so'nggi yozishmalarimiz:\n${recentContext(40)}`;
+    aiHist.push({ role: "user", parts: [{ text }] });
+    const wait = aiBubble("model", "🕊️ O'ylayapman…");
+    $("#ai-send").disabled = true;
+    try {
+      const ans = await gemini(MEDIATOR, aiHist);
+      aiHist.push({ role: "model", parts: [{ text: ans }] });
+      wait.remove(); aiBubble("model", ans || "…", true);
+    } catch (err) {
+      aiHist.pop(); wait.remove();
+      aiBubble("model", "😔 Javob olib bo'lmadi: " + err.message);
+    }
+    $("#ai-send").disabled = false;
+  }
+  async function findHappy() {
+    if (!CFG.gemini) { openAI(); return; }
+    const out = $("#happy-sug"), btn = $("#happy-ai");
+    const list = [...msgs.entries()].filter(([, m]) => m.from !== "ai" && !m.star && m.text).sort((a, b) => a[1].t - b[1].t).slice(-300);
+    if (!list.length) { out.textContent = "Chatda hali xabar yo'q."; return; }
+    btn.disabled = true; out.textContent = "✨ Gemini chatingizni o'qiyapti…";
+    try {
+      const txt = list.map(([, m], i) => `${i}. ${(KEYS.names[m.from] || {}).ism}: ${plain(m)}`).join("\n");
+      const raw = await gemini("Sen sevishganlar chatidan eng shirin, eng baxtli, eng mehrli lahzalarni topasan. Faqat JSON qaytar: {\"ids\":[raqamlar]}. Ko'pi bilan 8 ta.",
+        [{ role: "user", parts: [{ text: txt }] }], true);
+      const ids = ((JSON.parse(raw) || {}).ids || []).filter(i => list[i]);
+      out.textContent = "";
+      if (!ids.length) { out.textContent = "Hozircha topilmadi — yana yozishinglar 😊"; }
+      ids.forEach(i => {
+        const [id, m] = list[i];
+        const row = el("div", "happy-sug-row");
+        row.appendChild(el("span", null, "“" + plain(m) + "” — " + (KEYS.names[m.from] || {}).ism));
+        const add = el("button", null, "⭐ Qo'shish"); add.type = "button";
+        add.onclick = async () => { add.disabled = true; await toggleStar(id); row.remove(); };
+        row.appendChild(add); out.appendChild(row);
+      });
+    } catch (err) { out.textContent = "😔 " + err.message; }
+    btn.disabled = false;
+  }
+
   /* amallar oynasi */
   function openSheet(id) {
     const m = msgs.get(id); if (!m) return;
     sheetId = id;
     $("#tg-sheet").querySelector('[data-a="edit"]').hidden = m.from !== ME;
+    let sb = $("#tg-sheet").querySelector('[data-a="star"]');
+    if (!sb) { sb = el("button", null, ""); sb.type = "button"; sb.dataset.a = "star"; $("#tg-sheet .tg-sheet-g").prepend(sb); }
+    sb.textContent = m.star ? "☆ Baxtli onlardan olib tashlash" : "⭐ Baxtli onlarga qo'shish";
     $("#tg-sheet").hidden = false;
   }
   function closeSheet() { $("#tg-sheet").hidden = true; sheetId = null; }
@@ -721,6 +940,7 @@
     const m = sheetId && msgs.get(sheetId);
     if (a === "copy" && m) { try { await navigator.clipboard.writeText(m.text); } catch {} }
     if (a === "edit" && m) { startEdit(sheetId); }
+    if (a === "star" && m) toggleStar(sheetId);
     if (a || e.target.id === "tg-sheet") closeSheet();
   });
   function startEdit(id) {
