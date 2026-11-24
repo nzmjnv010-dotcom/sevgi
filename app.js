@@ -529,6 +529,24 @@
   }
   const REEL = /https?:\/\/(?:www\.)?instagram\.com\/(?:[\w.]+\/)?(reels?|p|tv)\/([\w-]+)[^\s]*/i;
 
+  // Reels kartochkasi: asosiy tugma Instagram ilovasida ochadi, xohlasa shu yerda ham ko'rish mumkin
+  function reelCard(kind, code) {
+    const url = `https://www.instagram.com/${kind}/${encodeURIComponent(code)}/`;
+    const w = el("div", "reel-link");
+    const a = el("a", "rl-main"); a.href = url;
+    a.appendChild(el("span", "rl-ico", "▶"));
+    const t = el("span", "rl-t"); t.appendChild(el("b", null, "Reels")); t.appendChild(el("small", null, "Instagram'da ko'rish ↗"));
+    a.appendChild(t);
+    a.addEventListener("click", e => e.stopPropagation());
+    const inl = el("button", "rl-inline", "yoki shu yerda ochish"); inl.type = "button";
+    inl.addEventListener("click", e => {
+      e.stopPropagation();
+      const f = el("iframe"); f.title = "Instagram"; f.allow = "autoplay; encrypted-media; fullscreen";
+      f.src = url + "embed/"; inl.replaceWith(f);
+    });
+    w.appendChild(a); w.appendChild(inl);
+    return w;
+  }
   function bubble(id, m) {
     const mine = m.from === ME;
     const b = el("div", "tg-msg " + (m.from === "ai" ? "ai" : mine ? "out" : "in"));
@@ -543,12 +561,8 @@
     const r = (m.text || "").match(REEL);
     if (r) {
       const kind = r[1].toLowerCase().startsWith("reel") ? "reel" : r[1].toLowerCase();
-      const f = el("iframe");
-      f.src = `https://www.instagram.com/${kind}/${encodeURIComponent(r[2])}/embed/`;
-      f.title = "Instagram"; f.loading = "lazy";
-      f.allow = "autoplay; encrypted-media; fullscreen";
       b.classList.add("reel");
-      b.appendChild(f);
+      b.appendChild(reelCard(kind, r[2]));
     }
     const txt = r ? m.text.replace(r[0], "").trim() : m.text;
     const body = el("div", "tg-text");
@@ -731,12 +745,7 @@
       c.appendChild(top);
       const txt = m.text.replace(r[0], "").trim();
       if (txt) c.appendChild(el("p", "reel-cap", txt));
-      const f = el("iframe"); f.loading = "lazy"; f.title = "Instagram Reels";
-      f.allow = "autoplay; encrypted-media; fullscreen";
-      f.src = `https://www.instagram.com/${kind}/${encodeURIComponent(r[2])}/embed/`;
-      c.appendChild(f);
-      const go = el("a", "reel-open", "Instagram'da ochish ↗"); go.href = `https://www.instagram.com/${kind}/${encodeURIComponent(r[2])}/`; go.target = "_blank"; go.rel = "noopener";
-      c.appendChild(go);
+      c.appendChild(reelCard(kind, r[2]));
       box.appendChild(c);
     }
     $("#reels").hidden = false;
