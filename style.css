@@ -352,3 +352,29 @@ body.tg-open .music,body.tg-open .chat-fab{display:none}
 .tg-sheet button[hidden]{display:none}
 .tg-sheet .cancel{border-radius:14px;font-weight:600}
 .msg{font-size:14px}
+
+/* ---------- qo'shimcha sevgi bo'limlari ---------- */
+.quote{max-width:620px;margin:30px auto 0;padding:30px 26px;text-align:center}
+.quote-ico{font-size:40px;margin-bottom:6px}
+.quote-text{font-family:"Playfair Display",serif;font-style:italic;font-size:21px;line-height:1.6;color:var(--wine);min-height:70px}
+.quote-text.pop{animation:pop .5s}
+.quote-btn{width:auto;margin-top:18px;padding:11px 22px;font-size:14px}
+.envs{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px}
+.env-card{border:0;cursor:pointer;padding:22px 12px 18px;border-radius:18px;color:var(--wine);font:600 14px "Nunito",sans-serif;
+  background:linear-gradient(160deg,#fff 0%,#ffe9ef 100%);box-shadow:var(--shadow);display:flex;flex-direction:column;align-items:center;gap:8px;
+  position:relative;overflow:hidden;transition:transform .25s}
+.env-card::before{content:"";position:absolute;left:0;right:0;top:0;height:46px;background:linear-gradient(160deg,var(--rose),var(--rose-d));
+  clip-path:polygon(0 0,100% 0,50% 100%);opacity:.9}
+.env-card:hover{transform:translateY(-4px) rotate(-1deg)}
+.env-emo{position:relative;font-size:34px;margin-top:10px}
+.env-t{line-height:1.35}
+.bday{display:flex;flex-direction:column;align-items:center;gap:6px;margin:30px auto 0;max-width:420px;width:100%;padding:28px 20px;border:0;cursor:pointer;font-family:"Nunito",sans-serif;color:var(--ink)}
+.bday-ico{font-size:54px}
+.bday b{font-family:"Playfair Display",serif;font-size:19px;color:var(--rose-d)}
+.bday small{color:var(--muted);font-size:14px}
+.bday.open .bday-ico{animation:beat 1.2s infinite}
+.lt-modal{position:fixed;inset:0;z-index:70;background:rgba(40,8,20,.7);display:flex;align-items:center;justify-content:center;padding:16px}
+.lt-modal[hidden]{display:none}
+.lt-box{position:relative;max-height:86vh;overflow-y:auto;width:100%;max-width:560px;animation:pop .5s}
+.lt-box p{font-size:16px}
+.lt-x{position:absolute;top:8px;right:10px;border:0;background:none;font-size:30px;color:var(--rose-d);cursor:pointer;z-index:2}

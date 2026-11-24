@@ -130,9 +130,13 @@
     $("#welcome-title").textContent = s.sarlavha;
     $("#welcome-text").textContent = s.matn;
     $("#chat-name").textContent = user === "bonu" ? "Rahmatulloh" : "Bonu";
-    if (!built) { build(); built = true; }
-    observe();
-    chatStart();
+    if (!built) {
+      built = true;
+      try { build(); } catch (e) { console.error(e); }
+      try { buildExtras(); } catch (e) { console.error(e); }
+    }
+    try { observe(); } catch (e) { document.querySelectorAll(".reveal").forEach(x => x.classList.add("in")); }
+    try { chatStart(); } catch (e) { console.error(e); }
   }
 
   function build() {
@@ -334,8 +338,8 @@
     }
     pl.hidden = false; pl.classList.remove("min"); btn.classList.add("on");
   }
-  $("#pl-min").addEventListener("click", () => $("#player").classList.add("min"));
-  $("#pl-close").addEventListener("click", () => music(false));
+  $("#pl-min")?.addEventListener("click", () => $("#player").classList.add("min"));
+  $("#pl-close")?.addEventListener("click", () => music(false));
 
   function photoCard(p, i, list) {
     const fig = el("figure", "g-item reveal");
@@ -369,7 +373,133 @@
     return fig;
   }
 
+  /* ---------- Qo'shimcha sevgi bo'limlari ---------- */
+  function buildExtras() {
+    const app = $("#app"), before = $("#savol");
+    const sec = (id, a, b) => {
+      const x = el("section", "section"); x.id = id;
+      const h = el("h2", "section-title"); h.appendChild(el("span", "script", a)); h.appendChild(document.createTextNode(" " + b));
+      x.appendChild(h); app.insertBefore(x, before); return x;
+    };
+    const link = (href, t) => { const a = el("a", null, t); a.href = href; a.onclick = () => $("#links").classList.remove("open"); $("#links").insertBefore(a, $("#logout")); };
+
+    // keyingi bayramimiz (har 100 kun va har yil)
+    const start = new Date(SAYT.tanishganSana + "T00:00:00");
+    if (!isNaN(start)) {
+      const now = new Date(); now.setHours(0, 0, 0, 0);
+      const days = Math.round((now - start) / 864e5);
+      const next100 = (Math.floor(days / 100) + 1) * 100;
+      const yil = new Date(start); yil.setFullYear(start.getFullYear() + 1);
+      while (yil < now) yil.setFullYear(yil.getFullYear() + 1);
+      const dYil = Math.round((yil - now) / 864e5), d100 = next100 - days;
+      const p = el("p", "since");
+      p.textContent = dYil <= d100
+        ? (dYil === 0 ? `🎉 Bugun bizning ${yil.getFullYear() - start.getFullYear()} yilligimiz!` : `💍 ${yil.getFullYear() - start.getFullYear()} yilligimizga ${dYil} kun qoldi`)
+        : `🎉 Birga ${next100} kunimizga ${d100} kun qoldi`;
+      $("#birthday").after(p);
+    }
+
+    // kunning sevgi so'zi
+    if (SAYT.kunlikSozlar && SAYT.kunlikSozlar.length) {
+      const L = SAYT.kunlikSozlar;
+      let i = Math.floor(Date.now() / 864e5) % L.length;
+      const x = sec("soz", "Kunning", "sevgi so'zi");
+      const c = el("div", "quote card reveal");
+      const q = el("p", "quote-text", "“" + L[i] + "”");
+      const btn = el("button", "btn ghost quote-btn", "Yana bittasi 💗"); btn.type = "button";
+      btn.onclick = e => { i = (i + 1) % L.length; q.classList.remove("pop"); void q.offsetWidth; q.classList.add("pop"); q.textContent = "“" + L[i] + "”"; burst(e.clientX, e.clientY, 10); };
+      c.appendChild(el("div", "quote-ico", "💌")); c.appendChild(q); c.appendChild(btn); x.appendChild(c);
+      link("#soz", "Kunning so'zi");
+    }
+
+    // "ochganda o'qi" xatlari
+    if (SAYT.ochgandaXatlar && SAYT.ochgandaXatlar.length) {
+      const x = sec("xatlar", "Ochganda", "o'qi");
+      x.appendChild(el("p", "section-sub", "Har bir konvert — o'z vaqti uchun. Kerak bo'lganda och 💌"));
+      const g = el("div", "envs");
+      SAYT.ochgandaXatlar.forEach(xt => {
+        const b = el("button", "env-card reveal"); b.type = "button";
+        b.appendChild(el("span", "env-emo", xt.emoji));
+        b.appendChild(el("span", "env-t", xt.sarlavha));
+        b.onclick = () => openLetter(xt.emoji + " " + xt.sarlavha, xt.matn);
+        g.appendChild(b);
+      });
+      x.appendChild(g);
+      link("#xatlar", "Xatlar");
+    }
+
+    // tug'ilgan kun xati
+    if (SAYT.tugilganKunXati && SAYT.bonuTugilganKun) {
+      const b = new Date(SAYT.bonuTugilganKun + "T00:00:00");
+      const now = new Date(); now.setHours(0, 0, 0, 0);
+      const isToday = now.getMonth() === b.getMonth() && now.getDate() === b.getDate();
+      const next = new Date(now.getFullYear(), b.getMonth(), b.getDate());
+      if (next < now) next.setFullYear(now.getFullYear() + 1);
+      const left = Math.round((next - now) / 864e5);
+      const x = sec("bday", "Tug'ilgan kun", "xati");
+      const c = el("button", "bday card reveal" + (isToday ? " open" : "")); c.type = "button";
+      c.appendChild(el("div", "bday-ico", isToday ? "🎁" : "🔒"));
+      c.appendChild(el("b", null, isToday ? "Bugun ochiladi! Bos 🎉" : "Bu xat 30-avgustda ochiladi"));
+      c.appendChild(el("small", null, isToday ? "Tug'ilgan kuning muborak, malikam!" : `Yana ${left} kun sabr qil 🤍`));
+      c.onclick = e => {
+        if (isToday) { openLetter("🎂 Tug'ilgan kuning muborak!", SAYT.tugilganKunXati.matn); burst(e.clientX, e.clientY, 30); }
+        else { c.classList.remove("shake"); void c.offsetWidth; c.classList.add("shake"); }
+      };
+      x.appendChild(c);
+    }
+    observe();
+  }
+
+  function openLetter(title, text) {
+    let m = $("#lt-modal");
+    if (!m) {
+      m = el("div", "lt-modal"); m.id = "lt-modal";
+      const box = el("div", "lt-box letter");
+      const x = el("button", "lt-x", "×"); x.type = "button"; x.onclick = () => (m.hidden = true);
+      box.appendChild(x); box.appendChild(el("p", "letter-to")); box.appendChild(el("div", "lt-body"));
+      box.appendChild(el("p", "letter-sign script", "Rahmatulloh ❤️"));
+      m.appendChild(box); m.onclick = e => { if (e.target === m) m.hidden = true; };
+      document.body.appendChild(m);
+    }
+    m.querySelector(".letter-to").textContent = title;
+    const body = m.querySelector(".lt-body"); body.textContent = "";
+    text.split(/\n\n+/).forEach(par => body.appendChild(el("p", null, par)));
+    m.hidden = false;
+    m.querySelector(".lt-box").scrollTop = 0;
+  }
+
   /* ---------- CHAT (Telegram uslubida, shifrlangan, Firebase) ---------- */
+  // Eski (keshdagi) index.html bilan ham ishlashi uchun kerakli elementlarni o'zi qo'shadi
+  if (!$("#tg")) $("#app").insertAdjacentHTML("beforeend", `    <button id="chat-fab" class="chat-fab" hidden aria-label="Chat">💬<span id="chat-badge" hidden></span></button>
+
+    <!-- Telegram uslubidagi chat -->
+    <div id="tg" class="tg" hidden>
+      <header class="tg-head">
+        <button id="tg-back" class="tg-back" type="button" aria-label="Orqaga">‹</button>
+        <div class="tg-ava" id="tg-ava">💗</div>
+        <div class="tg-title"><b id="tg-name"></b><small id="tg-status">ulanmoqda…</small></div>
+      </header>
+      <div id="tg-list" class="tg-list"></div>
+      <div id="tg-edit" class="tg-edit" hidden>
+        <span class="tg-edit-i">✏️</span>
+        <div><b>Tahrirlash</b><small id="tg-edit-old"></small></div>
+        <button id="tg-edit-x" type="button" aria-label="Bekor qilish">✕</button>
+      </div>
+      <form id="tg-form" class="tg-form" autocomplete="off">
+        <textarea id="tg-input" rows="1" maxlength="2000" placeholder="Xabar"></textarea>
+        <button id="tg-send" type="submit" aria-label="Yuborish">➤</button>
+      </form>
+    </div>
+    <div id="tg-sheet" class="tg-sheet" hidden>
+      <div class="tg-sheet-box">
+        <div class="tg-sheet-g">
+          <button type="button" data-a="edit">✏️ Tahrirlash</button>
+          <button type="button" data-a="copy">📋 Nusxalash</button>
+        </div>
+        <button type="button" data-a="x" class="cancel">Bekor qilish</button>
+      </div>
+    </div>`);
+  if (!$("#song")) $("#app").insertAdjacentHTML("beforeend", '<audio id="song" loop preload="none"></audio>');
   const DB = KEYS.chatDb ? KEYS.chatDb.replace(/\/+$/, "") : null;
   const msgs = new Map(), els = new Map();
   let es = null, es2 = null, seen = {}, editing = null, sheetId = null, chatOpen = false, beat = null, toBottom = true, lastSeenPut = 0;
