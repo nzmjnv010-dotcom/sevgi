@@ -57,7 +57,7 @@
         <a href="#galereya">Rasmlar</a>
         <a href="#videolar">Videolar</a>
         <a href="#yozishmalar">Yozishmalar</a>
-        <a href="#chat-live" id="nav-chat" hidden>Chat 💬</a>
+        <a href="#" id="nav-chat" hidden>Chat 💬</a>
         <a href="#sabablar">Sabablar</a>
         <a href="#orzular">Orzular</a>
         <button id="logout" class="logout">Chiqish</button>
@@ -120,22 +120,6 @@
       <div class="gallery shots" id="shots"></div>
     </section>
 
-    <section id="chat-live" class="section" hidden>
-      <h2 class="section-title"><span class="script">Bizning</span> chatimiz</h2>
-      <p class="section-sub">Faqat ikkimiz uchun. Instagram Reels havolasini tashlasang, shu yerning o'zida ochiladi 🎬</p>
-      <div class="phone live">
-        <div class="phone-head">
-          <div class="avatar">💞</div>
-          <div><b>Rahmatulloh &amp; Bonu</b><small id="chat-status">ulanmoqda…</small></div>
-        </div>
-        <div class="chat" id="live-chat"></div>
-        <form id="chat-form" class="chat-form" autocomplete="off">
-          <input id="chat-input" maxlength="2000" placeholder="Xabar yoki Reels havolasi…" aria-label="Xabar">
-          <button id="chat-send" type="submit" aria-label="Yuborish">➤</button>
-        </form>
-      </div>
-    </section>
-
     <section id="sabablar" class="section">
       <h2 class="section-title"><span class="script">Seni</span> nega sevaman</h2>
       <p class="section-sub" id="reasons-sub"></p>
@@ -163,6 +147,35 @@
     </footer>
 
     <button id="music" class="music" hidden aria-label="Musiqa">🎵</button>
+    <button id="chat-fab" class="chat-fab" hidden aria-label="Chat">💬<span id="chat-badge" hidden></span></button>
+
+    <!-- Telegram uslubidagi chat -->
+    <div id="tg" class="tg" hidden>
+      <header class="tg-head">
+        <button id="tg-back" class="tg-back" type="button" aria-label="Orqaga">‹</button>
+        <div class="tg-ava" id="tg-ava">💗</div>
+        <div class="tg-title"><b id="tg-name"></b><small id="tg-status">ulanmoqda…</small></div>
+      </header>
+      <div id="tg-list" class="tg-list"></div>
+      <div id="tg-edit" class="tg-edit" hidden>
+        <span class="tg-edit-i">✏️</span>
+        <div><b>Tahrirlash</b><small id="tg-edit-old"></small></div>
+        <button id="tg-edit-x" type="button" aria-label="Bekor qilish">✕</button>
+      </div>
+      <form id="tg-form" class="tg-form" autocomplete="off">
+        <textarea id="tg-input" rows="1" maxlength="2000" placeholder="Xabar"></textarea>
+        <button id="tg-send" type="submit" aria-label="Yuborish">➤</button>
+      </form>
+    </div>
+    <div id="tg-sheet" class="tg-sheet" hidden>
+      <div class="tg-sheet-box">
+        <div class="tg-sheet-g">
+          <button type="button" data-a="edit">✏️ Tahrirlash</button>
+          <button type="button" data-a="copy">📋 Nusxalash</button>
+        </div>
+        <button type="button" data-a="x" class="cancel">Bekor qilish</button>
+      </div>
+    </div>
     <audio id="song" loop preload="none"></audio>
     <div id="player" class="player" hidden>
       <div class="pl-head">

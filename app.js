@@ -369,10 +369,24 @@
     return fig;
   }
 
-  /* ---------- CHAT (Firebase, shifrlangan) ---------- */
+  /* ---------- CHAT (Telegram uslubida, shifrlangan, Firebase) ---------- */
   const DB = KEYS.chatDb ? KEYS.chatDb.replace(/\/+$/, "") : null;
-  let chatOn = false, es = null;
-  const msgs = new Map();
+  const msgs = new Map(), els = new Map();
+  let es = null, es2 = null, seen = {}, editing = null, sheetId = null, chatOpen = false, beat = null, toBottom = true, lastSeenPut = 0;
+  const OTHER = () => (ME === "bonu" ? "rahmatulloh" : "bonu");
+  const p2 = n => String(n).padStart(2, "0");
+  const hm = t => { const d = new Date(t); return p2(d.getHours()) + ":" + p2(d.getMinutes()); };
+  const OYLAR = ["yanvar", "fevral", "mart", "aprel", "may", "iyun", "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr"];
+  function dayLabel(t) {
+    const d = new Date(t), n = new Date(), y = new Date();
+    y.setDate(n.getDate() - 1);
+    if (d.toDateString() === n.toDateString()) return "Bugun";
+    if (d.toDateString() === y.toDateString()) return "Kecha";
+    return d.getDate() + "-" + OYLAR[d.getMonth()] + (d.getFullYear() !== n.getFullYear() ? " " + d.getFullYear() : "");
+  }
+  const lastRead = () => { try { return +localStorage.getItem("rb-read-" + ME) || 0; } catch { return 0; } };
+  const setRead = t => { try { localStorage.setItem("rb-read-" + ME, String(t)); } catch {} };
+
   async function encJson(obj) {
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, CK, new TextEncoder().encode(JSON.stringify(obj)));
@@ -383,83 +397,238 @@
     return JSON.parse(new TextDecoder().decode(pt));
   }
   const REEL = /https?:\/\/(?:www\.)?instagram\.com\/(?:[\w.]+\/)?(reels?|p|tv)\/([\w-]+)[^\s]*/i;
-  function fmtTime(t) {
-    const d = new Date(t), p = n => String(n).padStart(2, "0");
-    const today = new Date().toDateString() === d.toDateString();
-    return (today ? "" : `${d.getDate()}.${p(d.getMonth() + 1)} `) + `${p(d.getHours())}:${p(d.getMinutes())}`;
-  }
-  function renderChat() {
-    const box = $("#live-chat");
-    const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
-    box.textContent = "";
-    const list = [...msgs.entries()].sort((a, b) => a[1].t - b[1].t);
-    if (!list.length) box.appendChild(el("div", "msg sep", "Hali xabar yo'q — birinchi bo'lib yoz 💌"));
-    for (const [id, m] of list) {
-      const mine = m.from === ME;
-      const b = el("div", "msg in " + (m.from === "rahmatulloh" ? "r" : "b"));
-      b.appendChild(el("span", "who-tag", (KEYS.names[m.from] || {}).ism || "?"));
-      const r = (m.text || "").match(REEL);
-      const txt = r ? m.text.replace(r[0], "").trim() : m.text;
-      if (txt) b.appendChild(document.createTextNode(txt));
-      if (r) {
-        const kind = r[1].toLowerCase().startsWith("reel") ? "reel" : r[1].toLowerCase();
-        const f = el("iframe", "reel");
-        f.src = `https://www.instagram.com/${kind}/${encodeURIComponent(r[2])}/embed/`;
-        f.title = "Instagram"; f.loading = "lazy";
-        f.allow = "autoplay; encrypted-media; fullscreen";
-        b.classList.add("has-reel");
-        b.appendChild(f);
-      }
-      b.appendChild(el("time", null, fmtTime(m.t)));
-      if (mine) {
-        const del = el("button", "del", "×"); del.type = "button"; del.title = "O'chirish";
-        del.onclick = async () => {
-          if (!confirm("Xabarni o'chiraymi?")) return;
-          await fetch(`${DB}/chat/${id}.json`, { method: "DELETE" });
-          msgs.delete(id); renderChat();
-        };
-        b.appendChild(del);
-      }
-      box.appendChild(b);
+
+  function bubble(id, m) {
+    const mine = m.from === ME;
+    const b = el("div", "tg-msg " + (mine ? "out" : "in"));
+    b.dataset.id = id;
+    if (m.edits && m.edits.length) {
+      const q = el("div", "tg-prev");
+      q.appendChild(el("span", "tg-prev-l", "✏️ Avvalgi xabar" + (m.edits.length > 1 ? "lar" : "") + ":"));
+      m.edits.forEach(e => q.appendChild(el("div", "tg-prev-t", e.text)));
+      b.appendChild(q);
     }
-    if (atBottom || chatOn === "first") { box.scrollTop = box.scrollHeight; if (chatOn === "first") chatOn = true; }
+    const r = (m.text || "").match(REEL);
+    if (r) {
+      const kind = r[1].toLowerCase().startsWith("reel") ? "reel" : r[1].toLowerCase();
+      const f = el("iframe");
+      f.src = `https://www.instagram.com/${kind}/${encodeURIComponent(r[2])}/embed/`;
+      f.title = "Instagram"; f.loading = "lazy";
+      f.allow = "autoplay; encrypted-media; fullscreen";
+      b.classList.add("reel");
+      b.appendChild(f);
+    }
+    const txt = r ? m.text.replace(r[0], "").trim() : m.text;
+    const body = el("div", "tg-text");
+    if (txt) body.appendChild(document.createTextNode(txt));
+    const meta = el("span", "tg-meta", (m.edits && m.edits.length ? "tahrirlangan " : "") + hm(m.t));
+    if (mine) meta.appendChild(el("span", "tick", "✓"));
+    body.appendChild(meta);
+    b.appendChild(body);
+    b.addEventListener("click", () => openSheet(id));
+    return b;
   }
+  function sig(m) { return (m.text || "") + "|" + (m.edits ? m.edits.length : 0); }
+  function nearBottom() { const x = $("#tg-list"); return x.scrollHeight - x.scrollTop - x.clientHeight < 140; }
+  function scrollEnd() { const x = $("#tg-list"); x.scrollTop = x.scrollHeight; }
+
+  function rebuild() {
+    const box = $("#tg-list");
+    box.textContent = ""; els.clear();
+    const list = [...msgs.entries()].sort((a, b) => a[1].t - b[1].t);
+    if (!list.length) box.appendChild(el("div", "tg-day", "Hali xabar yo'q — birinchi bo'lib yoz 💌"));
+    let day = "";
+    for (const [id, m] of list) {
+      const d = dayLabel(m.t);
+      if (d !== day) { box.appendChild(el("div", "tg-day", d)); day = d; }
+      const b = bubble(id, m); b._sig = sig(m); box.appendChild(b); els.set(id, b);
+    }
+    afterChange(true);
+  }
+  function upsert(id, m) {
+    const box = $("#tg-list"), near = nearBottom();
+    if (els.has(id)) {
+      const old = els.get(id);
+      if (old._sig === sig(m)) return;
+      const b = bubble(id, m); b._sig = sig(m); old.replaceWith(b); els.set(id, b);
+      afterChange(false);
+      return;
+    }
+    const list = [...msgs.values()];
+    const latest = Math.max(0, ...list.filter(x => x !== m).map(x => x.t));
+    if (m.t < latest || !els.size) { rebuild(); return; }
+    const prev = list.filter(x => x !== m).sort((a, b) => b.t - a.t)[0];
+    if (!prev || dayLabel(prev.t) !== dayLabel(m.t)) box.appendChild(el("div", "tg-day", dayLabel(m.t)));
+    const b = bubble(id, m); b._sig = sig(m); box.appendChild(b); els.set(id, b);
+    if (near || m.from === ME) toBottom = true;
+    afterChange(false);
+  }
+  function afterChange(initial) {
+    updateTicks();
+    if (toBottom || initial) { scrollEnd(); toBottom = false; }
+    updateBadge();
+    if (chatOpen) markSeen();
+  }
+  function updateTicks() {
+    const s = seen[OTHER()] || 0;
+    for (const [id, b] of els) {
+      const m = msgs.get(id), t = b.querySelector(".tick");
+      if (!t || !m) continue;
+      const read = s >= m.t;
+      t.textContent = read ? "✓✓" : "✓";
+      t.classList.toggle("read", read);
+    }
+  }
+  function updateStatus() {
+    const st = $("#tg-status"), s = seen[OTHER()];
+    st.classList.remove("on");
+    if (!es || es.readyState !== 1) { st.textContent = "ulanmoqda…"; return; }
+    if (s && Date.now() - s < 60000) { st.textContent = "onlayn"; st.classList.add("on"); }
+    else if (s) { const d = dayLabel(s); st.textContent = "oxirgi marta " + (d === "Bugun" ? "" : d.toLowerCase() + " ") + hm(s) + " da"; }
+    else st.textContent = "🔒 shifrlangan chat";
+  }
+  function updateBadge() {
+    const lr = lastRead(), o = OTHER();
+    const n = chatOpen ? 0 : [...msgs.values()].filter(m => m.from === o && m.t > lr).length;
+    const bd = $("#chat-badge");
+    bd.hidden = !n; bd.textContent = n > 99 ? "99+" : String(n);
+  }
+  function markSeen() {
+    if (!chatOpen || document.visibilityState !== "visible") return;
+    const latest = Math.max(0, ...[...msgs.values()].map(m => m.t));
+    if (latest > lastRead()) setRead(latest);
+    const now = Date.now();
+    if (now - lastSeenPut > 5000) {
+      lastSeenPut = now;
+      fetch(`${DB}/seen/${ME}.json`, { method: "PUT", body: String(now) }).catch(() => {});
+    }
+  }
+
   async function addRec(id, rec) {
-    if (!rec) { msgs.delete(id); return; }
-    try { msgs.set(id, await decJson(rec)); } catch {}
+    if (!rec) { msgs.delete(id); const b = els.get(id); if (b) { b.remove(); els.delete(id); } return null; }
+    try { const m = await decJson(rec); msgs.set(id, m); return m; } catch { return null; }
   }
   function chatStart() {
-    if (!DB || chatOn) return;
-    $("#chat-live").hidden = false; $("#nav-chat").hidden = false;
-    chatOn = "first";
-    es = new EventSource(`${DB}/chat.json?orderBy="$key"&limitToLast=300`);
+    if (!DB || es) return;
+    $("#chat-fab").hidden = false; $("#nav-chat").hidden = false;
+    $("#tg-name").textContent = KEYS.names[OTHER()].ism;
+    $("#tg-ava").textContent = OTHER() === "bonu" ? "👸" : "🤴";
+    es = new EventSource(`${DB}/chat.json?orderBy="$key"&limitToLast=500`);
     const handle = async (e, patch) => {
       const { path, data } = JSON.parse(e.data);
       if (path === "/") {
         if (!patch) msgs.clear();
         for (const [id, rec] of Object.entries(data || {})) await addRec(id, rec);
+        rebuild();
       } else {
-        await addRec(path.slice(1).split("/")[0], data);
+        const id = path.slice(1).split("/")[0];
+        const m = await addRec(id, data);
+        if (m) upsert(id, m);
       }
-      renderChat();
     };
     es.addEventListener("put", e => handle(e, false));
     es.addEventListener("patch", e => handle(e, true));
-    es.onerror = () => { $("#chat-status").textContent = "ulanmoqda…"; };
-    es.onopen = () => { $("#chat-status").textContent = "onlayn"; };
+    es.onopen = updateStatus; es.onerror = updateStatus;
+    es2 = new EventSource(`${DB}/seen.json`);
+    es2.addEventListener("put", e => {
+      const { path, data } = JSON.parse(e.data);
+      if (path === "/") seen = data || {}; else seen[path.slice(1)] = data;
+      updateTicks(); updateStatus();
+    });
+    setInterval(updateStatus, 20000);
   }
-  function chatStop() { if (es) es.close(); es = null; chatOn = false; msgs.clear(); }
-  $("#chat-form").addEventListener("submit", async e => {
+  function chatStop() {
+    if (es) es.close(); if (es2) es2.close(); es = es2 = null;
+    msgs.clear(); els.clear(); seen = {};
+    closeChat(true);
+    $("#chat-fab").hidden = true; $("#nav-chat").hidden = true;
+  }
+
+  /* ochish / yopish */
+  function fit() {
+    const vv = window.visualViewport, t = $("#tg");
+    if (!vv || t.hidden) return;
+    const near = nearBottom();
+    t.style.height = vv.height + "px";
+    t.style.top = vv.offsetTop + "px";
+    if (near) scrollEnd();
+  }
+  if (window.visualViewport) { visualViewport.addEventListener("resize", fit); visualViewport.addEventListener("scroll", fit); }
+  function openChat() {
+    if (!DB) return;
+    $("#tg").hidden = false; chatOpen = true;
+    document.body.classList.add("tg-open");
+    $("#links").classList.remove("open");
+    fit(); scrollEnd(); updateBadge(); updateStatus();
+    lastSeenPut = 0; markSeen();
+    clearInterval(beat); beat = setInterval(() => { lastSeenPut = 0; markSeen(); }, 25000);
+    try { history.pushState({ tg: 1 }, ""); } catch {}
+  }
+  function closeChat(silent) {
+    if ($("#tg").hidden) return;
+    $("#tg").hidden = true; chatOpen = false;
+    document.body.classList.remove("tg-open");
+    clearInterval(beat); cancelEdit(); closeSheet();
+    updateBadge();
+    if (!silent && history.state && history.state.tg) { try { history.back(); } catch {} }
+  }
+  window.addEventListener("popstate", () => { if (chatOpen) closeChat(true); });
+  document.addEventListener("visibilitychange", () => { lastSeenPut = 0; markSeen(); });
+  $("#chat-fab").addEventListener("click", openChat);
+  $("#nav-chat").addEventListener("click", e => { e.preventDefault(); openChat(); });
+  $("#tg-back").addEventListener("click", () => closeChat(false));
+
+  /* amallar oynasi */
+  function openSheet(id) {
+    const m = msgs.get(id); if (!m) return;
+    sheetId = id;
+    $("#tg-sheet").querySelector('[data-a="edit"]').hidden = m.from !== ME;
+    $("#tg-sheet").hidden = false;
+  }
+  function closeSheet() { $("#tg-sheet").hidden = true; sheetId = null; }
+  $("#tg-sheet").addEventListener("click", async e => {
+    const a = e.target.dataset && e.target.dataset.a;
+    const m = sheetId && msgs.get(sheetId);
+    if (a === "copy" && m) { try { await navigator.clipboard.writeText(m.text); } catch {} }
+    if (a === "edit" && m) { startEdit(sheetId); }
+    if (a || e.target.id === "tg-sheet") closeSheet();
+  });
+  function startEdit(id) {
+    const m = msgs.get(id);
+    editing = id;
+    $("#tg-edit").hidden = false;
+    $("#tg-edit-old").textContent = m.text;
+    const inp = $("#tg-input");
+    inp.value = m.text; grow(); inp.focus();
+  }
+  function cancelEdit() { editing = null; $("#tg-edit").hidden = true; }
+  $("#tg-edit-x").addEventListener("click", () => { cancelEdit(); $("#tg-input").value = ""; grow(); });
+
+  /* yozish */
+  function grow() { const i = $("#tg-input"); i.style.height = "auto"; i.style.height = Math.min(i.scrollHeight, 120) + "px"; }
+  $("#tg-input").addEventListener("input", grow);
+  $("#tg-form").addEventListener("submit", async e => {
     e.preventDefault();
-    const inp = $("#chat-input"), text = inp.value.trim();
+    const inp = $("#tg-input"), text = inp.value.trim().slice(0, 2000);
     if (!text || !CK || !ME) return;
-    inp.value = ""; inp.focus();
-    const btn = $("#chat-send"); btn.disabled = true;
+    const btn = $("#tg-send"); btn.disabled = true;
     try {
-      const r = await fetch(`${DB}/chat.json`, { method: "POST", body: JSON.stringify(await encJson({ from: ME, text: text.slice(0, 2000), t: Date.now() })) });
-      if (!r.ok) throw 0;
-      chatOn = "first";
-    } catch { inp.value = text; alert("Xabar ketmadi, internetni tekshirib qayta urinib ko'r 🙏"); }
+      let r;
+      if (editing) {
+        const m = msgs.get(editing);
+        if (m.text !== text) {
+          const nm = { ...m, text, et: Date.now(), edits: [...(m.edits || []), { text: m.text, t: m.et || m.t }] };
+          r = await fetch(`${DB}/chat/${editing}.json`, { method: "PUT", body: JSON.stringify(await encJson(nm)) });
+          if (!r.ok) throw 0;
+        }
+        cancelEdit();
+      } else {
+        toBottom = true;
+        r = await fetch(`${DB}/chat.json`, { method: "POST", body: JSON.stringify(await encJson({ from: ME, text, t: Date.now() })) });
+        if (!r.ok) throw 0;
+      }
+      inp.value = ""; grow(); inp.focus();
+    } catch { alert("Xabar ketmadi, internetni tekshirib qayta urinib ko'r 🙏"); }
     btn.disabled = false;
   });
 

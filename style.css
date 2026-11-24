@@ -285,15 +285,70 @@ button{font-family:inherit;cursor:pointer}
 button.v-ph{width:100%;border:0;font:inherit;cursor:pointer}
 button.v-ph b{font-size:40px;width:74px;height:74px;border-radius:50%;background:rgba(255,255,255,.2);display:grid;place-items:center;padding-left:6px}
 
-/* ---------- jonli chat ---------- */
-.phone.live .chat{height:min(62vh,560px);min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
-.chat-form{display:flex;gap:8px;padding:10px;background:#fff;border-top:1px solid #f6c6d4}
-.chat-form input{flex:1;min-width:0;padding:12px 14px;border-radius:22px;border:2px solid #f6c6d4;font:inherit;font-size:16px;outline:none;color:var(--ink);background:#fff}
-.chat-form input:focus{border-color:var(--rose)}
-.chat-form button{width:46px;height:46px;flex:none;border:0;border-radius:50%;background:linear-gradient(135deg,var(--rose),var(--rose-d));color:#fff;font-size:18px}
-.chat-form button:disabled{opacity:.5}
-.msg .del{position:absolute;top:-8px;left:-8px;width:22px;height:22px;border-radius:50%;border:0;background:var(--wine);color:#fff;font-size:14px;line-height:1;opacity:.75}
-.msg.b .del{left:auto;right:-8px}
-.msg.has-reel{max-width:92%;width:330px}
-.msg iframe.reel{display:block;width:100%;height:520px;border:0;border-radius:12px;margin-top:6px;background:#000}
 .music{left:18px;right:auto}
+
+/* ---------- Telegram uslubidagi chat ---------- */
+.chat-fab{position:fixed;right:18px;bottom:18px;z-index:30;width:56px;height:56px;border-radius:50%;border:0;
+  background:linear-gradient(135deg,var(--rose),var(--rose-d));color:#fff;font-size:24px;box-shadow:var(--shadow)}
+.chat-fab[hidden]{display:none}
+#chat-badge{position:absolute;top:-3px;right:-3px;min-width:21px;height:21px;padding:0 5px;border-radius:11px;background:#ff3b30;
+  color:#fff;font:700 12px/21px -apple-system,system-ui,sans-serif;border:2px solid #fff}
+#chat-badge[hidden]{display:none}
+body.tg-open{overflow:hidden}
+body.tg-open .music,body.tg-open .chat-fab{display:none}
+.tg{position:fixed;left:0;right:0;top:0;height:100vh;height:100dvh;z-index:55;display:flex;flex-direction:column;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#000;
+  background:
+    radial-gradient(circle at 20% 30%,rgba(255,255,255,.35) 0 2px,transparent 3px) 0 0/46px 46px,
+    radial-gradient(circle at 70% 80%,rgba(255,255,255,.25) 0 3px,transparent 4px) 0 0/61px 61px,
+    linear-gradient(160deg,#f9c9d9 0%,#f4dcc7 45%,#cfe0f0 100%)}
+.tg[hidden]{display:none}
+.tg-head{display:flex;align-items:center;gap:10px;padding:6px 10px;padding-top:max(6px,env(safe-area-inset-top));
+  background:rgba(255,255,255,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid rgba(0,0,0,.08);flex:none}
+.tg-back{border:0;background:none;font-size:34px;line-height:1;color:#3390ec;padding:0 6px 4px 0;font-family:inherit}
+.tg-ava{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#ff9ebd,#e8557a);display:grid;place-items:center;font-size:19px;flex:none}
+.tg-title{min-width:0}
+.tg-title b{display:block;font-size:15px;font-weight:600;font-family:inherit}
+.tg-title small{display:block;font-size:12px;color:#8e8e93}
+.tg-title small.on{color:#3390ec}
+.tg-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:6px 8px 8px;display:flex;flex-direction:column;gap:3px}
+.tg-day{align-self:center;background:rgba(0,0,0,.2);color:#fff;font-size:12px;font-weight:600;padding:3px 10px;border-radius:12px;margin:8px 0 4px}
+.tg-msg{max-width:80%;padding:5px 8px 5px 9px;border-radius:15px;font-size:14px;line-height:1.35;position:relative;
+  overflow-wrap:anywhere;white-space:pre-wrap;box-shadow:0 1px 1px rgba(0,0,0,.13);cursor:pointer;-webkit-user-select:none;user-select:none}
+.tg-msg.out{align-self:flex-end;background:#effdde;border-bottom-right-radius:4px}
+.tg-msg.in{align-self:flex-start;background:#fff;border-bottom-left-radius:4px}
+.tg-msg:active{filter:brightness(.95)}
+.tg-meta{float:right;margin:5px 0 -3px 9px;font-size:11px;color:#a0a0a6;white-space:nowrap;line-height:1.6}
+.tg-msg.out .tg-meta{color:#62ac55}
+.tg-meta .tick{margin-left:3px;letter-spacing:-3px}
+.tg-meta .tick.read{color:#3eaa3a}
+.tg-prev{border-left:3px solid #3390ec;background:rgba(51,144,236,.09);border-radius:4px;padding:3px 7px;margin:1px 0 4px;font-size:12.5px;color:#444}
+.tg-msg.out .tg-prev{border-color:#5fb75a;background:rgba(95,183,90,.13)}
+.tg-prev-l{display:block;font-weight:600;font-size:11.5px;color:#3390ec}
+.tg-msg.out .tg-prev-l{color:#4a9a45}
+.tg-prev-t{opacity:.85}
+.tg-prev-t+.tg-prev-t{border-top:1px dashed rgba(0,0,0,.12);margin-top:2px;padding-top:2px}
+.tg-msg.reel{width:300px;max-width:88%}
+.tg-msg iframe{display:block;width:100%;height:470px;border:0;border-radius:10px;margin:2px 0 4px;background:#000}
+.tg-edit{display:flex;align-items:center;gap:10px;padding:6px 12px;background:#fff;border-top:1px solid rgba(0,0,0,.08);flex:none}
+.tg-edit[hidden]{display:none}
+.tg-edit-i{font-size:18px}
+.tg-edit div{flex:1;min-width:0;border-left:2px solid #3390ec;padding-left:8px}
+.tg-edit b{display:block;color:#3390ec;font-size:13px}
+.tg-edit small{display:block;font-size:12.5px;color:#666;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tg-edit button{border:0;background:none;color:#8e8e93;font-size:18px;padding:4px}
+.tg-form{display:flex;align-items:flex-end;gap:8px;padding:6px 8px;padding-bottom:max(6px,env(safe-area-inset-bottom));
+  background:rgba(255,255,255,.96);border-top:1px solid rgba(0,0,0,.08);flex:none}
+.tg-form textarea{flex:1;min-width:0;resize:none;border:1px solid #dcdce0;border-radius:18px;padding:8px 13px;
+  font:16px/1.3 -apple-system,BlinkMacSystemFont,sans-serif;max-height:120px;outline:none;background:#fff;color:#000}
+.tg-form button{width:38px;height:38px;flex:none;border:0;border-radius:50%;background:#3390ec;color:#fff;font-size:16px}
+.tg-form button:disabled{opacity:.5}
+.tg-sheet{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.35);display:flex;align-items:flex-end;justify-content:center}
+.tg-sheet[hidden]{display:none}
+.tg-sheet-box{width:100%;max-width:480px;padding:8px;padding-bottom:max(8px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:8px}
+.tg-sheet-g{display:flex;flex-direction:column;border-radius:14px;overflow:hidden}
+.tg-sheet button{border:0;background:rgba(255,255,255,.97);padding:15px;font:17px -apple-system,system-ui,sans-serif;color:#3390ec}
+.tg-sheet-g button+button{border-top:1px solid rgba(0,0,0,.1)}
+.tg-sheet button[hidden]{display:none}
+.tg-sheet .cancel{border-radius:14px;font-weight:600}
+.msg{font-size:14px}
