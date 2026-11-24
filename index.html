@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rahmatulloh ❤ Bonu</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; frame-src https://www.youtube.com; form-action 'self'">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💗</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="hearts" aria-hidden="true"></div>
+
+  <!-- ============ LOGIN ============ -->
+  <section id="login" class="screen active">
+    <div class="login-card">
+      <div class="lock">💝</div>
+      <h1 class="script">Rahmatulloh <span class="beat">❤</span> Bonu</h1>
+      <p class="subtitle">Bu eshik faqat ikki yurak uchun ochiladi</p>
+
+      <p class="who-label">Kimsan?</p>
+      <div class="who">
+        <button type="button" class="who-btn" data-user="bonu"><span>👸</span>Bonu</button>
+        <button type="button" class="who-btn" data-user="rahmatulloh"><span>🤴</span>Rahmatulloh</button>
+      </div>
+
+      <form id="login-form" autocomplete="off">
+        <input id="password" type="password" placeholder="Maxfiy so'z 🔑" aria-label="Parol">
+        <button type="submit" class="btn" id="login-btn">Yuragimni och 💌</button>
+        <p id="login-msg" class="login-msg" role="alert"></p>
+      </form>
+    </div>
+  </section>
+
+  <!-- ============ KONVERT (o'tish animatsiyasi) ============ -->
+  <section id="envelope" class="screen">
+    <div class="env">
+      <div class="env-back"></div>
+      <div class="env-letter"><span class="script" id="env-text">Seni sevaman</span></div>
+      <div class="env-front"></div>
+      <div class="env-flap"></div>
+    </div>
+  </section>
+
+  <!-- ============ ASOSIY SAYT ============ -->
+  <main id="app" class="screen">
+    <nav class="nav">
+      <a href="#bosh" class="brand script">R ❤ B</a>
+      <button class="burger" id="burger" aria-label="Menyu">☰</button>
+      <div class="links" id="links">
+        <a href="#maktub">Maktub</a>
+        <a href="#hikoya">Hikoyamiz</a>
+        <a href="#galereya">Rasmlar</a>
+        <a href="#videolar">Videolar</a>
+        <a href="#yozishmalar">Yozishmalar</a>
+        <a href="#sabablar">Sabablar</a>
+        <a href="#orzular">Orzular</a>
+        <button id="logout" class="logout">Chiqish</button>
+      </div>
+    </nav>
+
+    <header id="bosh" class="hero">
+      <p class="hero-small" id="hero-hi"></p>
+      <h1 class="script hero-title">Rahmatulloh <span class="beat">❤</span> Bonu</h1>
+      <div class="welcome card">
+        <h2 id="welcome-title"></h2>
+        <p id="welcome-text"></p>
+      </div>
+      <p class="counter-label">Biz birgamiz…</p>
+      <div class="counter" id="counter">
+        <div><b id="c-d">0</b><span>kun</span></div>
+        <div><b id="c-h">0</b><span>soat</span></div>
+        <div><b id="c-m">0</b><span>daqiqa</span></div>
+        <div><b id="c-s">0</b><span>soniya</span></div>
+      </div>
+      <p class="since" id="since"></p>
+      <p class="since" id="birthday"></p>
+      <a href="#maktub" class="scroll-down">⌄</a>
+    </header>
+
+    <section id="maktub" class="section">
+      <h2 class="section-title"><span class="script">Senga</span> maktub</h2>
+      <div class="letter reveal">
+        <p class="letter-to" id="letter-to"></p>
+        <div id="letter-body"></div>
+        <p class="letter-sign script" id="letter-sign"></p>
+      </div>
+    </section>
+
+    <section id="hikoya" class="section">
+      <h2 class="section-title"><span class="script">Bizning</span> hikoyamiz</h2>
+      <div class="timeline" id="timeline"></div>
+    </section>
+
+    <section id="galereya" class="section">
+      <h2 class="section-title"><span class="script">Baxtli</span> kunlarimiz</h2>
+      <p class="section-sub">Har bir rasm — bir umrlik xotira</p>
+      <div class="gallery" id="gallery"></div>
+    </section>
+
+    <section id="videolar" class="section">
+      <h2 class="section-title"><span class="script">Jonli</span> xotiralar</h2>
+      <div class="videos" id="videos"></div>
+    </section>
+
+    <section id="yozishmalar" class="section">
+      <h2 class="section-title"><span class="script">Shirin</span> yozishmalar</h2>
+      <div class="phone reveal">
+        <div class="phone-head">
+          <div class="avatar">💗</div>
+          <div><b id="chat-name">Bonu</b><small>onlayn</small></div>
+        </div>
+        <div class="chat" id="chat"></div>
+      </div>
+      <div class="gallery shots" id="shots"></div>
+    </section>
+
+    <section id="sabablar" class="section">
+      <h2 class="section-title"><span class="script">Seni</span> nega sevaman</h2>
+      <p class="section-sub" id="reasons-sub"></p>
+      <p class="section-sub tap">Kartochkani bos 👆</p>
+      <div class="reasons" id="reasons"></div>
+    </section>
+
+    <section id="orzular" class="section">
+      <h2 class="section-title"><span class="script">Birga</span> orzularimiz</h2>
+      <ul class="dreams reveal" id="dreams"></ul>
+    </section>
+
+    <section id="savol" class="section question">
+      <h2 class="script big">Meni sevasanmi?</h2>
+      <div class="q-buttons" id="q-area">
+        <button class="btn" id="yes">Ha, juda! 💖</button>
+        <button class="btn ghost" id="no">Yo'q</button>
+      </div>
+      <p id="q-answer" class="q-answer"></p>
+    </section>
+
+    <footer class="footer">
+      <p class="script">Rahmatulloh &amp; Bonu</p>
+      <p>Abadiy birga ♾️</p>
+    </footer>
+
+    <button id="music" class="music" hidden aria-label="Musiqa">🎵</button>
+    <div id="player" class="player" hidden>
+      <div class="pl-head">
+        <span>🎶 Bizning qo'shig'imiz — ▶ ni bos</span>
+        <button id="pl-min" aria-label="Yashirish">–</button>
+        <button id="pl-close" aria-label="O'chirish">×</button>
+      </div>
+      <div id="pl-frame"></div>
+    </div>
+  </main>
+
+  <!-- Rasmni kattalashtirish -->
+  <div id="lightbox" class="lightbox" hidden>
+    <button class="lb-close" aria-label="Yopish">×</button>
+    <button class="lb-prev" aria-label="Oldingi">‹</button>
+    <figure><img id="lb-img" alt=""><figcaption id="lb-cap"></figcaption></figure>
+    <button class="lb-next" aria-label="Keyingi">›</button>
+  </div>
+
+  <script src="keys.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
