@@ -653,6 +653,7 @@
       b.onclick = openAI; $(".tg-head").appendChild(b);
     }
     happySection();
+    if (SAYT.gemini && !CFG.gemini) CFG.gemini = SAYT.gemini;
     $("#tg-name").textContent = KEYS.names[OTHER()].ism;
     $("#tg-ava").textContent = OTHER() === "bonu" ? "👸" : "🤴";
     es = new EventSource(`${DB}/chat.json?orderBy="$key"&limitToLast=500`);
