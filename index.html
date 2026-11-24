@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Rahmatulloh ❤ Bonu</title>
   <meta name="robots" content="noindex, nofollow">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; frame-src https://www.youtube.com; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://*.firebaseio.com https://*.firebasedatabase.app; frame-src https://www.youtube.com https://www.instagram.com; form-action 'self'">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💗</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -57,6 +57,7 @@
         <a href="#galereya">Rasmlar</a>
         <a href="#videolar">Videolar</a>
         <a href="#yozishmalar">Yozishmalar</a>
+        <a href="#chat-live" id="nav-chat" hidden>Chat 💬</a>
         <a href="#sabablar">Sabablar</a>
         <a href="#orzular">Orzular</a>
         <button id="logout" class="logout">Chiqish</button>
@@ -117,6 +118,22 @@
         <div class="chat" id="chat"></div>
       </div>
       <div class="gallery shots" id="shots"></div>
+    </section>
+
+    <section id="chat-live" class="section" hidden>
+      <h2 class="section-title"><span class="script">Bizning</span> chatimiz</h2>
+      <p class="section-sub">Faqat ikkimiz uchun. Instagram Reels havolasini tashlasang, shu yerning o'zida ochiladi 🎬</p>
+      <div class="phone live">
+        <div class="phone-head">
+          <div class="avatar">💞</div>
+          <div><b>Rahmatulloh &amp; Bonu</b><small id="chat-status">ulanmoqda…</small></div>
+        </div>
+        <div class="chat" id="live-chat"></div>
+        <form id="chat-form" class="chat-form" autocomplete="off">
+          <input id="chat-input" maxlength="2000" placeholder="Xabar yoki Reels havolasi…" aria-label="Xabar">
+          <button id="chat-send" type="submit" aria-label="Yuborish">➤</button>
+        </form>
+      </div>
     </section>
 
     <section id="sabablar" class="section">

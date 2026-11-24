@@ -67,7 +67,7 @@
     return crypto.subtle.decrypt({ name: "AES-GCM", iv: b64d(k.iv) }, kek, b64d(k.ct));
   }
   async function useKey(raw) {
-    CK = await crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["decrypt"]);
+    CK = await crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt", "decrypt"]);
     SAYT = JSON.parse(new TextDecoder().decode(await decryptUrl("m/d.bin")));
   }
   async function decryptUrl(url) {
@@ -114,12 +114,15 @@
     chosen = null;
     document.querySelectorAll(".who-btn").forEach(b => b.classList.remove("sel"));
     music(false);
+    chatStop();
     show("login");
   });
 
   /* ---------- asosiy sayt ---------- */
   let built = false;
+  let ME = null;
   function enter(user) {
+    ME = user;
     show("app");
     const u = KEYS.names[user];
     const s = SAYT.salom[user];
@@ -129,6 +132,7 @@
     $("#chat-name").textContent = user === "bonu" ? "Rahmatulloh" : "Bonu";
     if (!built) { build(); built = true; }
     observe();
+    chatStart();
   }
 
   function build() {
@@ -210,7 +214,7 @@
         ph.disabled = true; ph.lastChild.textContent = "Ochilmoqda… 💗";
         try {
           const vid = el("video");
-          vid.controls = true; vid.playsInline = true;
+          vid.controls = true; vid.playsInline = true; vid.muted = true;
           vid.src = await blobUrl(v.fayl, "video/mp4");
           ph.replaceWith(vid);
           vid.play().catch(() => {});
@@ -364,6 +368,100 @@
     });
     return fig;
   }
+
+  /* ---------- CHAT (Firebase, shifrlangan) ---------- */
+  const DB = KEYS.chatDb ? KEYS.chatDb.replace(/\/+$/, "") : null;
+  let chatOn = false, es = null;
+  const msgs = new Map();
+  async function encJson(obj) {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, CK, new TextEncoder().encode(JSON.stringify(obj)));
+    return { iv: b64e(iv), ct: b64e(ct) };
+  }
+  async function decJson(rec) {
+    const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64d(rec.iv) }, CK, b64d(rec.ct));
+    return JSON.parse(new TextDecoder().decode(pt));
+  }
+  const REEL = /https?:\/\/(?:www\.)?instagram\.com\/(?:[\w.]+\/)?(reels?|p|tv)\/([\w-]+)[^\s]*/i;
+  function fmtTime(t) {
+    const d = new Date(t), p = n => String(n).padStart(2, "0");
+    const today = new Date().toDateString() === d.toDateString();
+    return (today ? "" : `${d.getDate()}.${p(d.getMonth() + 1)} `) + `${p(d.getHours())}:${p(d.getMinutes())}`;
+  }
+  function renderChat() {
+    const box = $("#live-chat");
+    const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+    box.textContent = "";
+    const list = [...msgs.entries()].sort((a, b) => a[1].t - b[1].t);
+    if (!list.length) box.appendChild(el("div", "msg sep", "Hali xabar yo'q — birinchi bo'lib yoz 💌"));
+    for (const [id, m] of list) {
+      const mine = m.from === ME;
+      const b = el("div", "msg in " + (m.from === "rahmatulloh" ? "r" : "b"));
+      b.appendChild(el("span", "who-tag", (KEYS.names[m.from] || {}).ism || "?"));
+      const r = (m.text || "").match(REEL);
+      const txt = r ? m.text.replace(r[0], "").trim() : m.text;
+      if (txt) b.appendChild(document.createTextNode(txt));
+      if (r) {
+        const kind = r[1].toLowerCase().startsWith("reel") ? "reel" : r[1].toLowerCase();
+        const f = el("iframe", "reel");
+        f.src = `https://www.instagram.com/${kind}/${encodeURIComponent(r[2])}/embed/`;
+        f.title = "Instagram"; f.loading = "lazy";
+        f.allow = "autoplay; encrypted-media; fullscreen";
+        b.classList.add("has-reel");
+        b.appendChild(f);
+      }
+      b.appendChild(el("time", null, fmtTime(m.t)));
+      if (mine) {
+        const del = el("button", "del", "×"); del.type = "button"; del.title = "O'chirish";
+        del.onclick = async () => {
+          if (!confirm("Xabarni o'chiraymi?")) return;
+          await fetch(`${DB}/chat/${id}.json`, { method: "DELETE" });
+          msgs.delete(id); renderChat();
+        };
+        b.appendChild(del);
+      }
+      box.appendChild(b);
+    }
+    if (atBottom || chatOn === "first") { box.scrollTop = box.scrollHeight; if (chatOn === "first") chatOn = true; }
+  }
+  async function addRec(id, rec) {
+    if (!rec) { msgs.delete(id); return; }
+    try { msgs.set(id, await decJson(rec)); } catch {}
+  }
+  function chatStart() {
+    if (!DB || chatOn) return;
+    $("#chat-live").hidden = false; $("#nav-chat").hidden = false;
+    chatOn = "first";
+    es = new EventSource(`${DB}/chat.json?orderBy="$key"&limitToLast=300`);
+    const handle = async (e, patch) => {
+      const { path, data } = JSON.parse(e.data);
+      if (path === "/") {
+        if (!patch) msgs.clear();
+        for (const [id, rec] of Object.entries(data || {})) await addRec(id, rec);
+      } else {
+        await addRec(path.slice(1).split("/")[0], data);
+      }
+      renderChat();
+    };
+    es.addEventListener("put", e => handle(e, false));
+    es.addEventListener("patch", e => handle(e, true));
+    es.onerror = () => { $("#chat-status").textContent = "ulanmoqda…"; };
+    es.onopen = () => { $("#chat-status").textContent = "onlayn"; };
+  }
+  function chatStop() { if (es) es.close(); es = null; chatOn = false; msgs.clear(); }
+  $("#chat-form").addEventListener("submit", async e => {
+    e.preventDefault();
+    const inp = $("#chat-input"), text = inp.value.trim();
+    if (!text || !CK || !ME) return;
+    inp.value = ""; inp.focus();
+    const btn = $("#chat-send"); btn.disabled = true;
+    try {
+      const r = await fetch(`${DB}/chat.json`, { method: "POST", body: JSON.stringify(await encJson({ from: ME, text: text.slice(0, 2000), t: Date.now() })) });
+      if (!r.ok) throw 0;
+      chatOn = "first";
+    } catch { inp.value = text; alert("Xabar ketmadi, internetni tekshirib qayta urinib ko'r 🙏"); }
+    btn.disabled = false;
+  });
 
   /* ---------- lightbox ---------- */
   let lbList = [], lbI = 0;

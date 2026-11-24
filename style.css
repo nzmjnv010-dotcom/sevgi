@@ -284,3 +284,16 @@ button{font-family:inherit;cursor:pointer}
 .ph.loading b{animation:beat 1.2s infinite}
 button.v-ph{width:100%;border:0;font:inherit;cursor:pointer}
 button.v-ph b{font-size:40px;width:74px;height:74px;border-radius:50%;background:rgba(255,255,255,.2);display:grid;place-items:center;padding-left:6px}
+
+/* ---------- jonli chat ---------- */
+.phone.live .chat{height:min(62vh,560px);min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.chat-form{display:flex;gap:8px;padding:10px;background:#fff;border-top:1px solid #f6c6d4}
+.chat-form input{flex:1;min-width:0;padding:12px 14px;border-radius:22px;border:2px solid #f6c6d4;font:inherit;font-size:16px;outline:none;color:var(--ink);background:#fff}
+.chat-form input:focus{border-color:var(--rose)}
+.chat-form button{width:46px;height:46px;flex:none;border:0;border-radius:50%;background:linear-gradient(135deg,var(--rose),var(--rose-d));color:#fff;font-size:18px}
+.chat-form button:disabled{opacity:.5}
+.msg .del{position:absolute;top:-8px;left:-8px;width:22px;height:22px;border-radius:50%;border:0;background:var(--wine);color:#fff;font-size:14px;line-height:1;opacity:.75}
+.msg.b .del{left:auto;right:-8px}
+.msg.has-reel{max-width:92%;width:330px}
+.msg iframe.reel{display:block;width:100%;height:520px;border:0;border-radius:12px;margin-top:6px;background:#000}
+.music{left:18px;right:auto}
