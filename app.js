@@ -675,6 +675,8 @@
     if (!$("#tg-ai")) {
       const b = el("button", "tg-aib", "🕊️"); b.id = "tg-ai"; b.type = "button"; b.title = "Yarashtiruvchi (AI)";
       b.onclick = openAI; $(".tg-head").appendChild(b);
+      const nb = el("button", "tg-aib", "🔔"); nb.id = "tg-bell"; nb.type = "button"; nb.title = "Telefonga xabarnoma";
+      nb.onclick = openNotify; $(".tg-head").insertBefore(nb, b);
     }
     happySection();
     if (SAYT.gemini && !CFG.gemini) CFG.gemini = SAYT.gemini;
@@ -705,6 +707,55 @@
     });
     setInterval(updateStatus, 20000);
   }
+  /* ---------- 🔔 Telefonga xabarnoma (ntfy.sh ilovasi orqali) ---------- */
+  const SITE_URL = location.origin + location.pathname;
+  let lastNotify = 0;
+  function notifyOther(what) {
+    const topic = SAYT.notify && SAYT.notify[OTHER()];
+    if (!topic) return;
+    const s = seen[OTHER()] || 0, now = Date.now();
+    if (now - s < 20000) return;            // u hozir chatda — bezovta qilmaymiz
+    if (now - lastNotify < 15000) return;   // ketma-ket xabarlarda bitta xabarnoma
+    lastNotify = now;
+    // Xabar matni yuborilmaydi (maxfiy) — faqat kim yozgani
+    fetch("https://ntfy.sh/", { method: "POST", body: JSON.stringify({
+      topic, title: `${KEYS.names[ME].ism} ${KEYS.names[ME].emoji}`, message: what,
+      tags: ["love_letter"], click: SITE_URL, priority: 4 }) }).catch(() => {});
+  }
+  function openNotify() {
+    const topic = SAYT.notify && SAYT.notify[ME];
+    if (!topic) { alert("Xabarnoma hali sozlanmagan."); return; }
+    let m = $("#nt");
+    if (!m) {
+      document.body.insertAdjacentHTML("beforeend", `
+      <div id="nt" class="tg-sheet nt" hidden><div class="nt-box">
+        <h3>🔔 Telefonga xabarnoma</h3>
+        <p>${KEYS.names[OTHER()].ism} yozganda telefoningizga Telegram'dagidek xabar keladi. Bir marta sozlanadi:</p>
+        <ol>
+          <li>App Store'da <b>ntfy</b> deb qidirib, ilovani o'rnating (bepul)</li>
+          <li>Ilovani oching → <b>+</b> ni bosing</li>
+          <li><b>Topic</b> katagiga quyidagi nomni qo'ying → <b>Subscribe</b></li>
+        </ol>
+        <div class="nt-topic"><code id="nt-topic"></code><button id="nt-copy" type="button">Nusxalash</button></div>
+        <p class="nt-small">Bildirishnomalarga ruxsat so'rasa — <b>Разрешить</b>. Bu nom faqat sizniki, hech kimga bermang.</p>
+        <button id="nt-test" type="button" class="nt-btn">📳 Sinab ko'rish</button>
+        <button id="nt-x" type="button" class="nt-close">Yopish</button>
+        <p class="nt-small">Xabar matni yuborilmaydi — faqat "${KEYS.names[OTHER()].ism} yangi xabar yozdi" degan yozuv keladi. U chatda bo'lsa, xabarnoma yuborilmaydi.</p>
+      </div></div>`);
+      m = $("#nt");
+      $("#nt-x").onclick = () => (m.hidden = true);
+      m.onclick = e => { if (e.target === m) m.hidden = true; };
+      $("#nt-copy").onclick = async () => { try { await navigator.clipboard.writeText(topic); $("#nt-copy").textContent = "✓ Nusxalandi"; } catch { prompt("Nusxalang:", topic); } };
+      $("#nt-test").onclick = () => {
+        fetch("https://ntfy.sh/", { method: "POST", body: JSON.stringify({ topic, title: "💗 Sinov", message: "Zo'r! Xabarnomalar ishlayapti 🎉", tags: ["tada"], click: SITE_URL }) })
+          .then(r => alert(r.ok ? "Yuborildi! Telefoningizga xabar kelishi kerak 📳" : "Yuborilmadi (" + r.status + ")"))
+          .catch(() => alert("Internet bilan muammo 🙏"));
+      };
+    }
+    $("#nt-topic").textContent = topic;
+    m.hidden = false;
+  }
+
   /* ---------- 🎬 Reels ---------- */
   function reelsSetup() {
     if (!$("#tg-reel")) {
@@ -1094,6 +1145,7 @@ Qoidalar:
         toBottom = true;
         r = await fetch(`${DB}/chat.json`, { method: "POST", body: JSON.stringify(await encJson({ from: ME, text, t: Date.now() })) });
         if (!r.ok) throw 0;
+        notifyOther(REEL.test(text) ? "🎬 Reels yubordi" : "💌 Yangi xabar yozdi");
       }
       inp.value = ""; grow(); inp.focus();
     } catch { alert("Xabar ketmadi, internetni tekshirib qayta urinib ko'r 🙏"); }

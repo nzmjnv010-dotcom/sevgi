@@ -449,3 +449,16 @@ body.tg-open .music,body.tg-open .chat-fab{display:none}
 .reel-card .reel-link iframe{height:min(78vh,640px)}
 .reel-card .rl-ig{color:#aaa}
 .tg-form .tg-reelb{background:#f1f1f4;color:#000}
+
+/* xabarnoma oynasi */
+.nt{align-items:center;padding:16px;z-index:70}
+.nt-box{background:#fff;border-radius:18px;padding:20px 18px;max-width:420px;width:100%;font:14px/1.5 -apple-system,system-ui,sans-serif;color:#222;max-height:88vh;overflow:auto}
+.nt-box h3{font-size:18px;margin-bottom:8px;font-family:inherit}
+.nt-box ol{padding-left:20px;margin:8px 0}
+.nt-box a{color:#3390ec}
+.nt-topic{display:flex;gap:8px;align-items:center;background:#f3f3f6;border-radius:12px;padding:8px 8px 8px 12px;margin:8px 0}
+.nt-topic code{flex:1;font-size:14px;word-break:break-all;color:#b8325a;font-weight:700}
+.nt-topic button{border:0;border-radius:10px;padding:8px 10px;background:#3390ec;color:#fff;font-weight:600;font-size:13px;white-space:nowrap}
+.nt-small{font-size:12.5px;color:#777;margin:6px 0}
+.nt-btn{width:100%;border:0;border-radius:12px;padding:12px;background:linear-gradient(135deg,#e8557a,#b8325a);color:#fff;font-weight:700;font-size:15px;margin-top:8px}
+.nt-close{width:100%;border:0;border-radius:12px;padding:11px;background:#f1f1f4;color:#333;font-size:15px;margin:8px 0 4px}
