@@ -461,7 +461,7 @@
     const m = el("div", "lt-modal kc"); m.id = "kc";
     const box = el("div", "lt-box letter kc-box");
     box.appendChild(el("div", "kc-ico", "🥀"));
-    box.appendChild(el("p", "letter-to", "Kechir meni..."));
+    box.appendChild(el("p", "letter-to", k.sarlavha || "Kechir meni..."));
     const body = el("div", "lt-body");
     k.matn.split(/\n\n+/).forEach(par => body.appendChild(el("p", null, par)));
     box.appendChild(body);
