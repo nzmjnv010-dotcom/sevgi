@@ -462,3 +462,11 @@ body.tg-open .music,body.tg-open .chat-fab{display:none}
 .nt-small{font-size:12.5px;color:#777;margin:6px 0}
 .nt-btn{width:100%;border:0;border-radius:12px;padding:12px;background:linear-gradient(135deg,#e8557a,#b8325a);color:#fff;font-weight:700;font-size:15px;margin-top:8px}
 .nt-close{width:100%;border:0;border-radius:12px;padding:11px;background:#f1f1f4;color:#333;font-size:15px;margin:8px 0 4px}
+
+/* kechirim xati */
+.kc{z-index:75;background:rgba(30,6,16,.82)}
+.kc-box{padding-top:30px}
+.kc-ico{text-align:center;font-size:42px;margin-bottom:4px}
+.kc-btns{display:flex;flex-direction:column;gap:10px;margin-top:14px;font-family:"Nunito",sans-serif}
+.kc-later{border:0;background:none;color:var(--muted);font-size:13px;text-decoration:underline;padding:4px}
+.kc-done{text-align:center;font-family:"Playfair Display",serif;font-size:20px;color:var(--rose-d)}

@@ -137,6 +137,7 @@
     }
     try { observe(); } catch (e) { document.querySelectorAll(".reveal").forEach(x => x.classList.add("in")); }
     try { chatStart(); } catch (e) { console.error(e); }
+    try { showApology(); } catch (e) { console.error(e); }
   }
 
   function build() {
@@ -448,6 +449,46 @@
       x.appendChild(c);
     }
     observe();
+  }
+
+  /* ---------- Kechirim xati: Bonu kirganda, javob bergunicha chiqadi ---------- */
+  function showApology() {
+    const k = SAYT.kechirim;
+    if (ME !== "bonu" || !k || !k.faol) return;
+    const key = "rb-kechirim-" + k.id;
+    try { if (localStorage.getItem(key)) return; } catch {}
+    if ($("#kc")) return;
+    const m = el("div", "lt-modal kc"); m.id = "kc";
+    const box = el("div", "lt-box letter kc-box");
+    box.appendChild(el("div", "kc-ico", "🥀"));
+    box.appendChild(el("p", "letter-to", "Kechir meni..."));
+    const body = el("div", "lt-body");
+    k.matn.split(/\n\n+/).forEach(par => body.appendChild(el("p", null, par)));
+    box.appendChild(body);
+    box.appendChild(el("p", "letter-sign script", k.imzo || ""));
+    const btns = el("div", "kc-btns");
+    const answer = async (text, done) => {
+      try { localStorage.setItem(key, text); } catch {}
+      btns.textContent = "";
+      btns.appendChild(el("p", "kc-done", done));
+      try {
+        if (DB && CK) {
+          await fetch(`${DB}/chat.json`, { method: "POST", body: JSON.stringify(await encJson({ from: ME, text, t: Date.now() })) });
+          notifyOther("💬 Xatingga javob berdi");
+        }
+      } catch {}
+      setTimeout(() => m.remove(), 2600);
+    };
+    const yes = el("button", "btn", "🤍 Kechirdim"); yes.type = "button";
+    yes.onclick = e => { burst(e.clientX, e.clientY, 34); answer("🤍 Kechirdim", "Rahmat, Bonu 🤍"); };
+    const wait = el("button", "btn ghost", "⏳ Menga hali vaqt kerak"); wait.type = "button";
+    wait.onclick = () => answer("⏳ Menga hali vaqt kerak", "Tushunarli. U kutadi 🤍");
+    const later = el("button", "kc-later", "Keyinroq javob beraman"); later.type = "button";
+    later.onclick = () => m.remove();
+    btns.appendChild(yes); btns.appendChild(wait); btns.appendChild(later);
+    box.appendChild(btns);
+    m.appendChild(box);
+    document.body.appendChild(m);
   }
 
   function openLetter(title, text) {
